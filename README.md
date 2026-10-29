@@ -1,12 +1,8 @@
-<p align="center">
-  <img src=".github/banner.svg" alt="mangashelf: save manga chapters as folders, ZIP or CBZ" width="100%">
-</p>
+![mangashelf: save manga chapters as folders, ZIP or CBZ](.github/banner.svg)
 
-<p align="center">
-  <a href="https://github.com/EldinBegano/mangashelf/releases/latest"><img src="https://img.shields.io/github/v/release/EldinBegano/mangashelf?color=d6336c&label=release" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/Firefox%20%7C%20Floorp-supported-d6336c?logo=firefoxbrowser&logoColor=white" alt="Works in Firefox and Floorp">
-  <img src="https://img.shields.io/badge/Chrome-supported-d6336c?logo=googlechrome&logoColor=white" alt="Works in Chrome">
-</p>
+[![Latest release](https://img.shields.io/github/v/release/EldinBegano/mangashelf?color=d6336c&label=release)](https://github.com/EldinBegano/mangashelf/releases/latest)
+![Works in Firefox and Floorp](https://img.shields.io/badge/Firefox%20%7C%20Floorp-supported-d6336c?logo=firefoxbrowser&logoColor=white)
+![Works in Chrome](https://img.shields.io/badge/Chrome-supported-d6336c?logo=googlechrome&logoColor=white)
 
 Browser extension that downloads manga chapters and image galleries as a folder of
 numbered images, a ZIP, or a CBZ. Best used together with
