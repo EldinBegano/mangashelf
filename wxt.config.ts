@@ -31,6 +31,8 @@ export default defineConfig({
       'declarativeNetRequest',
       ...(browser === 'firefox' ? [] : ['offscreen']),
     ],
+    // Asked for when the user turns on notifications in the settings.
+    optional_permissions: ['notifications'],
     host_permissions: ['<all_urls>'],
     ...(browser === 'firefox' && {
       browser_specific_settings: {

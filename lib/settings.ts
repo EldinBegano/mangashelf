@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: Settings = {
   concurrency: 3,
   minSize: 300,
   mangadexQuality: 'data',
+  notify: false,
 };
 
 export async function getSettings(): Promise<Settings> {

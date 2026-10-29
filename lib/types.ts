@@ -74,6 +74,8 @@ export interface Settings {
   concurrency: number;
   minSize: number;
   mangadexQuality: MangadexQuality;
+  /** Show a desktop notification when a job ends (needs the optional notifications permission). */
+  notify: boolean;
 }
 
 export interface JobSpec {
@@ -89,9 +91,11 @@ export interface JobSpec {
   concurrency: number;
   /** Started from a private window: kept out of history and storage. */
   incognito: boolean;
+  /** Overwrite files of the same name instead of adding " (1)" (a retried archive replaces the partial one). */
+  replace?: boolean;
 }
 
-export type JobStatus = 'running' | 'packing' | 'done' | 'error';
+export type JobStatus = 'running' | 'packing' | 'done' | 'error' | 'cancelled';
 
 export interface JobProgress {
   id: string;
@@ -102,4 +106,6 @@ export interface JobProgress {
   status: JobStatus;
   error?: string;
   incognito: boolean;
+  /** Last file written, for showing it in its folder. */
+  downloadId?: number;
 }

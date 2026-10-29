@@ -11,7 +11,11 @@ const RETRIES = 3;
 const TIMEOUT_MS = 60_000;
 const MAX_RETRY_AFTER_MS = 60_000;
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => (clearTimeout(timer), reject(signal.reason)), { once: true });
+  });
 
 class HttpError extends Error {
   constructor(
@@ -30,8 +34,9 @@ export function retryAfterMs(header: string | null, now = Date.now()): number | 
   return Number.isFinite(ms) ? Math.min(Math.max(ms, 0), MAX_RETRY_AFTER_MS) : undefined;
 }
 
-async function fetchOnce(url: string): Promise<FetchedImage> {
-  const res = await fetch(url, { credentials: 'include', signal: AbortSignal.timeout(TIMEOUT_MS) });
+async function fetchOnce(url: string, signal?: AbortSignal): Promise<FetchedImage> {
+  const timeout = AbortSignal.timeout(TIMEOUT_MS);
+  const res = await fetch(url, { credentials: 'include', signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
   if (!res.ok) throw new HttpError(res.status, retryAfterMs(res.headers.get('retry-after')));
   const type = res.headers.get('content-type') ?? '';
   if (/^text\/html/i.test(type)) throw new Error('Got an HTML page instead of an image');
@@ -45,19 +50,23 @@ async function fetchOnce(url: string): Promise<FetchedImage> {
   };
 }
 
-/** Try each URL with exponential backoff (or the server's Retry-After); throws the last error when all fail. */
-export async function fetchImage(urls: string[]): Promise<FetchedImage> {
+/**
+ * Try each URL with exponential backoff (or the server's Retry-After); throws the last error when all fail.
+ * Aborting `signal` stops at once, mid-request or mid-wait.
+ */
+export async function fetchImage(urls: string[], signal?: AbortSignal): Promise<FetchedImage> {
   let lastError: unknown;
   for (const url of urls) {
     for (let attempt = 0; attempt < RETRIES; attempt++) {
       try {
-        return await fetchOnce(url);
+        return await fetchOnce(url, signal);
       } catch (err) {
+        if (signal?.aborted) throw err;
         lastError = err;
         const http = err instanceof HttpError ? err : undefined;
         // 4xx other than 429 will not get better by retrying the same URL.
         if (http && http.status >= 400 && http.status < 500 && http.status !== 429) break;
-        if (attempt < RETRIES - 1) await sleep(http?.retryAfterMs ?? 500 * 2 ** attempt);
+        if (attempt < RETRIES - 1) await sleep(http?.retryAfterMs ?? 500 * 2 ** attempt, signal);
       }
     }
   }

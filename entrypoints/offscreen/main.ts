@@ -1,4 +1,4 @@
-import { runJob } from '@/lib/job-runner';
+import { abortJob, runJob } from '@/lib/job-runner';
 import { broadcast, listen, send } from '@/lib/messages';
 
 // Chrome only: long-lived page that fetches images and builds archives. It has no
@@ -9,7 +9,7 @@ listen({
       async save(blob, filename) {
         const url = URL.createObjectURL(blob);
         try {
-          await send({ type: 'save', url, filename, incognito: spec.incognito });
+          return await send<number | undefined>({ type: 'save', url, filename, incognito: spec.incognito, replace: spec.replace });
         } finally {
           URL.revokeObjectURL(url);
         }
@@ -17,4 +17,5 @@ listen({
       progress: (progress) => broadcast({ type: 'job:progress', progress }),
     });
   },
+  'job:cancel': ({ id }) => abortJob(id),
 });

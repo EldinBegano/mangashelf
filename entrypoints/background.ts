@@ -1,9 +1,16 @@
 import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 import { downloadAndWait } from '@/lib/downloads';
-import { forgetPrivateJobs, listJobs, recordProgress, startJob } from '@/lib/job-host';
+import {
+  cancelJob,
+  forgetPrivateJobs,
+  handleNotificationClicks,
+  listJobs,
+  recordProgress,
+  retryJob,
+  startJob,
+} from '@/lib/job-host';
 import { listen, type ScanFn, type ScanReply } from '@/lib/messages';
-import { jobLabel } from '@/lib/job-runner';
 import { folderPath, pageNames, stemFromUrl } from '@/lib/naming';
 import { ensureRefererRules } from '@/lib/referer-rules';
 import { getSettings } from '@/lib/settings';
@@ -50,15 +57,6 @@ async function startDownload(
     incognito,
   };
   await ensureRefererRules(gallery);
-  recordProgress({
-    id: spec.id,
-    label: jobLabel(spec),
-    total: pages.length,
-    done: 0,
-    failed: [],
-    status: 'running',
-    incognito,
-  });
   await startJob(spec);
   return spec.id;
 }
@@ -71,9 +69,12 @@ export default defineBackground({
       download: async ({ gallery, pages, format, tabId }) =>
         startDownload(gallery, pages, format, (await browser.tabs.get(tabId)).incognito),
       jobs: ({ incognito }) => listJobs(incognito),
-      save: ({ url, filename, incognito }) => downloadAndWait(url, filename, incognito),
+      cancel: ({ id }) => cancelJob(id),
+      retry: ({ id }) => retryJob(id),
+      save: ({ url, filename, incognito, replace }) => downloadAndWait(url, filename, incognito, replace),
       'job:progress': ({ progress }) => recordProgress(progress),
     });
+    handleNotificationClicks();
 
     browser.runtime.onInstalled.addListener(async () => {
       // Menus survive updates; recreating them with the same id would fail.

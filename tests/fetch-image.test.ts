@@ -25,6 +25,14 @@ describe('retryAfterMs', () => {
 });
 
 describe('fetchImage', () => {
+  it('stops waiting to retry once aborted', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 429, headers: { 'retry-after': '30' } })));
+    const controller = new AbortController();
+    const pending = fetchImage(['https://cdn.example.com/1.png'], controller.signal);
+    setTimeout(() => controller.abort(), 10);
+    await expect(pending).rejects.toThrow(/abort/i);
+  });
+
   it('waits as long as a 429 asks, then retries', async () => {
     const fetch = vi
       .fn()

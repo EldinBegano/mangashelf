@@ -81,6 +81,8 @@ hasn't been tested there.
 > - `downloads`: saves the images or the ZIP/CBZ archive.
 > - `contextMenus`: "Download image with mangashelf" and "Download all pages with mangashelf".
 > - `storage`: settings and the download list.
+> - `notifications` (optional, requested only when the user turns it on in the settings):
+>   tells the user a download finished.
 >
 > No remote code, no analytics, no data sent anywhere except requests to the site the user
 > is on, its image hosts, and the MangaDex API on MangaDex pages.

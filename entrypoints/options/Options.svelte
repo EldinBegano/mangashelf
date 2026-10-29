@@ -24,6 +24,19 @@
     settings = await getSettings();
   });
 
+  function toggleNotify(event: Event) {
+    const box = event.currentTarget as HTMLInputElement;
+    if (!box.checked) {
+      settings.notify = false;
+      return;
+    }
+    // Browsers only show the permission prompt when it is requested straight from the click.
+    browser.permissions.request({ permissions: ['notifications'] }).then((granted) => {
+      settings.notify = granted;
+      box.checked = granted;
+    });
+  }
+
   async function save() {
     settings.concurrency = Math.min(8, Math.max(1, Math.round(settings.concurrency)));
     settings = await saveSettings($state.snapshot(settings));
@@ -73,6 +86,11 @@
     </select>
   </label>
 
+  <label class="check">
+    <input type="checkbox" checked={settings.notify} onchange={toggleNotify} />
+    <span>Notify when a download finishes <small>clicking it shows the file in its folder</small></span>
+  </label>
+
   <div class="actions">
     <button class="primary" onclick={save}>Save</button>
     <button onclick={() => (settings = { ...DEFAULT_SETTINGS })}>Reset to defaults</button>
@@ -105,6 +123,10 @@
   }
   span {
     font-weight: 600;
+  }
+  .check {
+    flex-direction: row;
+    align-items: center;
   }
   .preview {
     margin: -8px 0 0;

@@ -3,6 +3,7 @@
   import { SvelteSet } from 'svelte/reactivity';
   import { browser } from 'wxt/browser';
   import type { ScanResult } from '@/lib/extractors';
+  import { canRetry } from '@/lib/job-list';
   import { send, type Message } from '@/lib/messages';
   import { chapterLabel } from '@/lib/naming';
   import { getSettings, saveSettings } from '@/lib/settings';
@@ -85,6 +86,22 @@
       jobs = await send<JobProgress[]>({ type: 'jobs', incognito });
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  async function jobAction(msg: Message) {
+    try {
+      await send(msg);
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  async function showFile(downloadId: number) {
+    try {
+      await browser.downloads.show(downloadId);
+    } catch {
+      error = 'The file was moved or deleted.';
     }
   }
 
@@ -216,9 +233,18 @@
         <div class="job" class:error={job.status === 'error'}>
           <div class="job-head">
             <span class="job-label" title={job.label}>{job.label}</span>
-            <span>
-              {#if job.status === 'packing'}packing…{:else if job.status === 'error'}{job.error ?? 'failed'}{:else}{job.done}/{job.total}{/if}
+            <span class="job-status">
+              {#if job.status === 'packing'}packing…{:else if job.status === 'error'}{job.error ?? 'failed'}{:else if job.status === 'cancelled'}cancelled{:else}{job.done}/{job.total}{/if}
             </span>
+            {#if job.status === 'running' || job.status === 'packing'}
+              <button class="mini" onclick={() => jobAction({ type: 'cancel', id: job.id })} title="Stop this download">Cancel</button>
+            {/if}
+            {#if canRetry(job)}
+              <button class="mini" onclick={() => jobAction({ type: 'retry', id: job.id })} title="Download what failed again">Retry</button>
+            {/if}
+            {#if job.status === 'done' && job.downloadId !== undefined}
+              <button class="mini" onclick={() => showFile(job.downloadId!)} title="Show in folder">Show</button>
+            {/if}
           </div>
           <progress max={job.total} value={job.done + job.failed.length}></progress>
           {#if job.failed.length}
@@ -376,15 +402,20 @@
   }
   .job-head {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
     gap: 8px;
   }
   .job-label {
+    flex: 1;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  .job.error .job-head span:last-child,
+  .mini {
+    padding: 0 6px;
+    font-size: 11px;
+  }
+  .job.error .job-status,
   .failed {
     color: var(--bad);
   }

@@ -1,7 +1,7 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { comicInfo } from '../lib/archive';
-import { runJob } from '../lib/job-runner';
+import { abortJob, runJob } from '../lib/job-runner';
 import type { Gallery, JobProgress, JobSpec } from '../lib/types';
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
@@ -151,6 +151,39 @@ describe('runJob', () => {
     const result = await runJob(spec({ gallery: mangadex, pages: [0, 1], names: ['001', '002'], concurrency: 1 }), hooks());
     expect(result).toMatchObject({ status: 'done', done: 2, failed: [] });
     expect(node).toBe(2);
+  });
+
+  it('stops when cancelled, keeping finished pages and not counting the aborted one as failed', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init: RequestInit) => {
+        if (url.includes('/1.png')) return Promise.resolve(new Response(PNG, { headers: { 'content-type': 'image/png' } }));
+        queueMicrotask(() => abortJob('job'));
+        return new Promise((_, reject) => init.signal!.addEventListener('abort', () => reject(init.signal!.reason)));
+      }),
+    );
+    const h = hooks();
+    const result = await runJob(spec({ pages: [0, 2], names: ['001', '003'], concurrency: 1 }), h);
+    expect(result).toMatchObject({ status: 'cancelled', done: 1, failed: [] });
+    expect(result.error).toBeUndefined();
+    expect(h.saved.map((s) => s.filename)).toEqual(['mangashelf/example/Series _1_/Ch.2/001.png']);
+    expect(abortJob('job')).toBe(false);
+  });
+
+  it('saves no partial archive when cancelled', async () => {
+    stubFetch();
+    const h = hooks();
+    h.progress = (p) => void (p.done === 1 && abortJob('job'));
+    const result = await runJob(spec({ format: 'cbz', concurrency: 1 }), h);
+    expect(result.status).toBe('cancelled');
+    expect(h.saved).toHaveLength(0);
+  });
+
+  it('remembers the last download id so the file can be shown', async () => {
+    stubFetch();
+    let id = 40;
+    const result = await runJob(spec({ format: 'zip' }), { ...hooks(), save: async () => ++id });
+    expect(result.downloadId).toBe(41);
   });
 
   it('errors when nothing could be downloaded', async () => {

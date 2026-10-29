@@ -36,10 +36,15 @@ folder, then click the reload icon on mangashelf in `chrome://extensions`. Your 
 
 1. Open a chapter or gallery and click the mangashelf icon.
 2. Pick pages (Shift+click selects a range) and choose **Folder**, **ZIP** or **CBZ**.
-3. Click **Download**. You can close the popup; the download keeps going.
+3. Click **Download**. You can close the popup; the download keeps going, with its progress
+   on the toolbar icon (a red **!** means a download had failures).
+4. In the popup's download list: **Cancel** a running download, **Retry** one with failed
+   pages (a folder gets just the missing pages; a ZIP/CBZ is rebuilt and replaces the partial
+   one), or **Show** the file in its folder.
 
 Files go to `Downloads/mangashelf/<site>/<series>/<chapter>/`.
-Settings (⚙ in the popup): save location, default format, parallel downloads, MangaDex quality.
+Settings (⚙ in the popup): save location, default format, parallel downloads, MangaDex quality,
+and an optional notification when a download finishes.
 
 Right-click any image → **Download image with mangashelf**.
 

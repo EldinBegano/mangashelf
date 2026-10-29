@@ -6,10 +6,15 @@ export type Message =
   | { type: 'scan'; tabId: number; autoScroll?: boolean; mangadexQuality?: MangadexQuality }
   | { type: 'download'; gallery: Gallery; pages: number[]; format: SaveFormat; tabId: number }
   | { type: 'jobs'; incognito: boolean }
+  | { type: 'cancel'; id: string }
+  /** Download a finished job's failed pages again (the whole archive for ZIP/CBZ). */
+  | { type: 'retry'; id: string }
   /** Offscreen document → background: write a blob URL to disk (Chrome only). */
-  | { type: 'save'; url: string; filename: string; incognito: boolean }
+  | { type: 'save'; url: string; filename: string; incognito: boolean; replace?: boolean }
   /** Background → offscreen document: run a job (Chrome only). */
   | { type: 'job:start'; spec: JobSpec }
+  /** Background → offscreen document: stop a job; replies whether it was running (Chrome only). */
+  | { type: 'job:cancel'; id: string }
   /** Broadcast to background and popup. */
   | { type: 'job:progress'; progress: JobProgress };
 

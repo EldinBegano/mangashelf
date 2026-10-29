@@ -1,15 +1,21 @@
 import { browser, type Browser } from 'wxt/browser';
 
 /**
- * Start a download and resolve once it is fully written (so blob URLs can be revoked).
+ * Start a download and resolve with its id once it is fully written (so blob URLs can be revoked).
  * Private-window downloads stay out of the normal download history: Firefox files
- * them under the private session; Chrome has no such option, so the entry is erased.
+ * them under the private session; Chrome has no such option, so the entry is erased
+ * and there is no id to return.
  */
-export async function downloadAndWait(url: string, filename: string, incognito = false): Promise<void> {
+export async function downloadAndWait(
+  url: string,
+  filename: string,
+  incognito = false,
+  replace = false,
+): Promise<number | undefined> {
   const options: Browser.downloads.DownloadOptions & { incognito?: boolean } = {
     url,
     filename,
-    conflictAction: 'uniquify' as Browser.downloads.FilenameConflictAction,
+    conflictAction: (replace ? 'overwrite' : 'uniquify') as Browser.downloads.FilenameConflictAction,
     saveAs: false,
   };
   if (incognito && import.meta.env.FIREFOX) options.incognito = true;
@@ -27,5 +33,9 @@ export async function downloadAndWait(url: string, filename: string, incognito =
     browser.downloads.onChanged.addListener(listener);
     browser.downloads.search({ id }).then(([item]) => finish(item?.state, item?.error));
   });
-  if (incognito && !import.meta.env.FIREFOX) await browser.downloads.erase({ id });
+  if (incognito && !import.meta.env.FIREFOX) {
+    await browser.downloads.erase({ id });
+    return undefined;
+  }
+  return id;
 }
