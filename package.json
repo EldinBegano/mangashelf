@@ -1,7 +1,7 @@
 {
   "name": "mangashelf",
   "description": "Download manga chapters, galleries and images from many sites as folders, ZIP or CBZ.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "license": "MIT",
   "homepage": "https://eldinbegano.github.io/mangashelf/",
   "repository": "github:EldinBegano/mangashelf",
