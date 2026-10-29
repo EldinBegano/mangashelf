@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check tag matches package.json
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $VERSION" >&2
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run check
+
+      - name: Build
+        run: |
+          npx wxt zip
+          npx wxt zip -b firefox
+          mkdir release
+          cp ".output/mangashelf-$VERSION-chrome.zip" release/
+          cp ".output/mangashelf-$VERSION-firefox.zip" "release/mangashelf-$VERSION-firefox.xpi"
+          node scripts/updates-json.mjs "$VERSION" "release/mangashelf-$VERSION-firefox.xpi" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/mangashelf-$VERSION-firefox.xpi" \
+            > release/updates.json
+          node scripts/release-notes.mjs "$VERSION" > release/notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "mangashelf $VERSION" \
+            --notes-file release/notes.md \
+            release/*.zip release/*.xpi release/updates.json

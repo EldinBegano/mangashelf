@@ -5,16 +5,23 @@ numbered images, a ZIP, or a CBZ.
 
 ## Install
 
+Download the latest version from the
+[Releases page](https://github.com/EldinBegano/mangashelf/releases/latest).
+
 **Firefox / Floorp / LibreWolf**
-1. Open `about:addons` → gear icon → **Install Add-on From File…**
-2. Pick `mangashelf-firefox.xpi` and click **Add**.
+1. Download `mangashelf-<version>-firefox.xpi`.
+2. Open `about:addons` → gear icon → **Install Add-on From File…** → pick the file → **Add**.
 3. Puzzle-piece menu → gear next to mangashelf → **Pin to Toolbar**.
 
-Regular Firefox only installs add-ons signed by Mozilla. Floorp and LibreWolf don't need that.
+Updates install automatically. Regular Firefox only installs add-ons signed by Mozilla;
+Floorp and LibreWolf don't need that.
 
 **Chrome / Chromium / Brave / Edge**
-1. Open `chrome://extensions` and turn on **Developer mode**.
-2. **Load unpacked** → pick the `chrome-mv3` folder.
+1. Download `mangashelf-<version>-chrome.zip` and unzip it into a folder you keep.
+2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick that folder.
+
+When a new version is out, the popup says so. Unzip the new version over the same
+folder, then click the reload icon on mangashelf in `chrome://extensions`. Your settings stay.
 
 ## Use
 

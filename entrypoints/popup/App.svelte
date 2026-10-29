@@ -6,6 +6,7 @@
   import { send, type Message } from '@/lib/messages';
   import { chapterLabel } from '@/lib/naming';
   import { getSettings, saveSettings } from '@/lib/settings';
+  import { checkForUpdate, type UpdateInfo } from '@/lib/update-check';
   import type { GalleryPage, JobProgress, MangadexQuality, SaveFormat } from '@/lib/types';
 
   let tabId = $state<number>();
@@ -18,6 +19,7 @@
   let quality = $state<MangadexQuality>('data');
   let minSize = $state(300);
   let jobs = $state<JobProgress[]>([]);
+  let update = $state<UpdateInfo>();
   let measured = $state<Record<number, { w: number; h: number }>>({});
   /** Index into thumbSources() per page; bumped when a thumbnail fails to load. */
   let thumbAttempt = $state<Record<number, number>>({});
@@ -111,6 +113,11 @@
     };
     browser.runtime.onMessage.addListener(onMessage);
 
+    // Firefox installs releases itself (update_url); other builds only get a notice.
+    if (!import.meta.env.FIREFOX) {
+      checkForUpdate(browser.runtime.getManifest().version).then((u) => (update = u));
+    }
+
     (async () => {
       const settings = await getSettings();
       format = settings.format;
@@ -142,6 +149,9 @@
     <button class="link" onclick={() => browser.runtime.openOptionsPage()} title="Settings">⚙</button>
   </header>
 
+  {#if update}
+    <a class="update" href={update.url} target="_blank" rel="noreferrer">mangashelf {update.version} is available. Download</a>
+  {/if}
   {#if scan?.warning}<p class="warn">{scan.warning}</p>{/if}
   {#if error}<p class="error">{error}</p>{/if}
 
@@ -259,6 +269,14 @@
     border: none;
     background: none;
     font-size: 16px;
+  }
+  .update {
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-weight: 600;
+    text-decoration: none;
   }
   .warn,
   .error {

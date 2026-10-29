@@ -23,6 +23,8 @@ export default defineConfig({
         gecko: {
           id: 'mangashelf@eldinbegano',
           strict_min_version: '142.0',
+          // Firefox/Floorp check this daily and install newer releases by themselves.
+          update_url: 'https://github.com/EldinBegano/mangashelf/releases/latest/download/updates.json',
           data_collection_permissions: { required: ['none'] },
         },
       },

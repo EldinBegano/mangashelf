@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { browser } from 'wxt/browser';
   import { folderPath, pageNames } from '@/lib/naming';
   import { DEFAULT_SETTINGS, getSettings, saveSettings } from '@/lib/settings';
   import type { Gallery, Settings } from '@/lib/types';
@@ -32,7 +33,7 @@
 </script>
 
 <main>
-  <h1>mangashelf settings</h1>
+  <h1>mangashelf settings <small>version {browser.runtime.getManifest().version}</small></h1>
 
   <label>
     <span>Base folder <small>inside your Downloads folder</small></span>
