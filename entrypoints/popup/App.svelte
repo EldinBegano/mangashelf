@@ -45,7 +45,7 @@
       measured = {};
       thumbAttempt = {};
       selected.clear();
-      scan.gallery.pages.forEach((_, i) => selected.add(i));
+      for (const i of scan.gallery.preselect ?? scan.gallery.pages.keys()) selected.add(i);
     } catch (err) {
       scan = undefined;
       error = err instanceof Error ? err.message : String(err);

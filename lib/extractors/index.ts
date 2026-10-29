@@ -1,10 +1,10 @@
 import type { ExtractCtx, ExtractOptions, Extractor, Gallery } from '../types';
 import { generic } from './generic';
-import { manganami } from './manganami';
 import { mangadex } from './mangadex';
+import { manganato } from './manganato';
 
 /** Site adapters, most specific first; `generic` matches everything. */
-export const EXTRACTORS: Extractor[] = [mangadex, manganami, generic];
+export const EXTRACTORS: Extractor[] = [mangadex, manganato, generic];
 
 export function pickExtractor(url: URL): Extractor {
   return EXTRACTORS.find((e) => e.matches(url)) ?? generic;
@@ -21,9 +21,16 @@ export async function fetchJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Cloudflare's interstitial ("Just a moment...") replaces the real page until it passes. */
+/**
+ * Cloudflare's interstitial replaces the real page until it passes. Its title is
+ * localized ("Just a moment...", "Nur einen Moment…"), but it always loads the
+ * challenge orchestrator script, which normal pages don't.
+ */
 export function isChallengePage(doc: Document): boolean {
-  return /^just a moment/i.test(doc.title.trim()) || doc.querySelector('#challenge-form, #challenge-stage') !== null;
+  return (
+    /^just a moment/i.test(doc.title.trim()) ||
+    doc.querySelector('script[src*="/cdn-cgi/challenge-platform/"][src*="/orchestrate/"], #challenge-form, #challenge-stage') !== null
+  );
 }
 
 export interface ScanResult {

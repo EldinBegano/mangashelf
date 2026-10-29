@@ -23,6 +23,8 @@ export interface Gallery {
   /** Referer the image host expects; installs a header rule when set. */
   referer?: string;
   pages: GalleryPage[];
+  /** Indices of pages to select by default (the detected reader); all when unset. */
+  preselect?: number[];
   /** Opaque data an extractor needs to re-resolve expired page URLs. */
   refresh?: unknown;
 }

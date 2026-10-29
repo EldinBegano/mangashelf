@@ -29,10 +29,9 @@ Right-click any image → **Download image with mangashelf**.
 
 ## Supported sites
 
-- **MangaDex**: chapter pages
-- **manganami**: chapter pages
-- **Other sites**: shows every image on the page to pick from. If images load as you
+- **Full support:** MangaDex and the Manganato family (Manganato, Manganami, MangaKakalot, MangaNelo)
+- **Tested with the image picker:** Webtoons, Weeb Central, Asura Scans, MangaRead, Imgur
+- **Other sites:** shows every image on the page to pick from. If images load as you
   scroll, click **Scroll & rescan**.
 
-Doesn't work on readers that show one page per link, or on sites that draw pages on a
-canvas or scramble them (e.g. MangaPlus).
+Full list and known problems: [SUPPORTED_SITES.md](SUPPORTED_SITES.md).

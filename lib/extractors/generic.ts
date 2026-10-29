@@ -76,11 +76,13 @@ export function collectImages(doc: Document, base: string, minSize: number, imgO
     if (linked) {
       add({ url: linked, thumb: src, el: img });
     } else if (src) {
+      // A lazy image still showing its placeholder reports the placeholder's size.
+      const loaded = img.currentSrc === src;
       add({
         url: src,
         el: img,
-        width: knownSize(img.naturalWidth) ?? knownSize(parseInt(img.getAttribute('width') ?? '', 10)),
-        height: knownSize(img.naturalHeight) ?? knownSize(parseInt(img.getAttribute('height') ?? '', 10)),
+        width: (loaded ? knownSize(img.naturalWidth) : undefined) ?? knownSize(parseInt(img.getAttribute('width') ?? '', 10)),
+        height: (loaded ? knownSize(img.naturalHeight) : undefined) ?? knownSize(parseInt(img.getAttribute('height') ?? '', 10)),
       });
     }
   }
@@ -172,14 +174,20 @@ export const generic: Extractor = {
   id: 'generic',
   matches: () => true,
   async extract({ url, document, options }) {
-    const pages = stripCandidates(collectImages(document, url.href, options.minSize));
+    const candidates = collectImages(document, url.href, options.minSize);
+    const reader = new Set(findReaderImages(document, url.href, options.minSize).map((c) => c.url));
+    const preselect =
+      reader.size >= 2 && reader.size < candidates.length
+        ? candidates.flatMap((c, i) => (reader.has(c.url) ? [i] : []))
+        : undefined;
     return {
       extractor: 'generic',
       site: url.hostname.replace(/^www\./, ''),
       series: document.title.trim() || url.hostname,
       sourceUrl: url.href,
       referer: url.href,
-      pages,
+      pages: stripCandidates(candidates),
+      preselect,
     };
   },
 };

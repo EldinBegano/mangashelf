@@ -82,7 +82,7 @@ export default defineBackground({
         } else if (info.menuItemId === MENU_PAGE && tab?.id !== undefined) {
           const { gallery } = await scanTab(tab.id);
           const settings = await getSettings();
-          await startDownload(gallery, gallery.pages.map((_, i) => i), settings.format);
+          await startDownload(gallery, gallery.preselect ?? gallery.pages.map((_, i) => i), settings.format);
         }
       } catch (err) {
         console.error('[mangashelf] context menu download failed', err);

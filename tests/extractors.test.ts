@@ -11,7 +11,10 @@ describe('pickExtractor', () => {
   it.each([
     [MANGADEX_URL, 'mangadex'],
     ['https://mangadex.org/title/c86edee1-807b-4e17-b524-291ac7c2f650', 'generic'],
-    [MANGANAMI_URL, 'manganami'],
+    [MANGANAMI_URL, 'manganato'],
+    ['https://www.kakamanga.com/manga/the-lazy-aristocrat/chapter-16', 'manganato'],
+    ['https://www.manganato.gg/manga/the-lazy-aristocrat/chapter-16.5', 'manganato'],
+    ['https://www.manganami.com/manga/berserk', 'generic'],
     ['https://example.com/', 'generic'],
   ])('%s → %s', (url, id) => {
     expect(pickExtractor(new URL(url)).id).toBe(id);
@@ -72,9 +75,33 @@ describe('generic', () => {
     ]);
   });
 
+  it('ignores the size of a lazy-load placeholder', () => {
+    const page = htmlDocument(
+      '<img src="https://c.example/blank.png" data-url="https://c.example/p1.jpg" width="700" height="1140">',
+    );
+    const img = page.querySelector('img')!;
+    Object.defineProperties(img, {
+      currentSrc: { value: 'https://c.example/blank.png' },
+      naturalWidth: { value: 1 },
+      naturalHeight: { value: 1 },
+    });
+    expect(collectImages(page, 'https://c.example/', 300)).toMatchObject([
+      { url: 'https://c.example/p1.jpg', width: 700, height: 1140 },
+    ]);
+  });
+
   it('keeps the thumbnail of a linked full-size image', () => {
     const linked = collectImages(doc(), base, 300).find((c) => c.url.endsWith('full.png'));
     expect(linked?.thumb).toBe('https://cdn.example.com/art/thumb.png');
+  });
+
+  it('preselects only the reader pages', async () => {
+    const { gallery } = await scanDocument('https://example.com/read/1', doc(), options, routes({}));
+    expect(gallery.extractor).toBe('generic');
+    expect(gallery.pages).toHaveLength(11);
+    expect(gallery.preselect?.map((i) => gallery.pages[i]!.url)).toEqual(
+      [1, 2, 3, 4].map((n) => `https://cdn.example.com/berserk/164/00${n}.jpg`),
+    );
   });
 
   it('finds the reader pages even when other images outnumber them', () => {
@@ -83,23 +110,45 @@ describe('generic', () => {
   });
 });
 
-describe('manganami', () => {
-  it('uses URL metadata and the reader images', async () => {
+describe('manganato', () => {
+  it('takes every image of the chapter reader, in order', async () => {
+    const doc = htmlDocument(fixture('manganato-chapter.html'));
+    const { gallery } = await scanDocument(MANGANAMI_URL, doc, options, routes({}));
+    expect(gallery).toMatchObject({
+      extractor: 'manganato',
+      site: 'manganami',
+      series: 'Berserk',
+      chapter: '164',
+      referer: 'https://www.manganami.com/',
+    });
+    expect(gallery.pages.map((p) => p.url)).toEqual(
+      [0, 1, 2, 3].map((n) => `https://img-r1.2xstorage.com/berserk/164/${n}.webp`),
+    );
+  });
+
+  it('guesses the reader when the template changes', async () => {
     const { gallery } = await scanDocument(MANGANAMI_URL, htmlDocument(fixture('reader.html')), options, routes({}));
-    expect(gallery).toMatchObject({ extractor: 'manganami', series: 'Berserk', chapter: '164', referer: 'https://www.manganami.com/' });
+    expect(gallery.extractor).toBe('manganato');
     expect(gallery.pages).toHaveLength(4);
   });
 
   it('falls back to the generic scan with a warning when no reader is found', async () => {
     const { gallery, warning } = await scanDocument(MANGANAMI_URL, empty(), options, routes({}));
     expect(gallery.extractor).toBe('generic');
-    expect(warning).toMatch(/^manganami: No chapter images found/);
+    expect(warning).toMatch(/^manganato: No chapter images found/);
   });
 });
 
 describe('scanDocument', () => {
   it('refuses Cloudflare challenge pages instead of scanning them', async () => {
     const doc = htmlDocument('<html><head><title>Just a moment...</title></head><body><img src="/favicon.ico"></body></html>');
+    await expect(scanDocument(MANGANAMI_URL, doc, options, routes({}))).rejects.toThrow(/Cloudflare check/);
+  });
+
+  it('recognizes localized Cloudflare challenge pages by their script', async () => {
+    const doc = htmlDocument(
+      '<html><head><title>Nur einen Moment…</title><script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=1"></script></head><body></body></html>',
+    );
     await expect(scanDocument(MANGANAMI_URL, doc, options, routes({}))).rejects.toThrow(/Cloudflare check/);
   });
 });
