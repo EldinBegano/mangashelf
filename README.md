@@ -8,6 +8,10 @@ Browser extension that downloads manga chapters and image galleries as a folder 
 numbered images, a ZIP, or a CBZ. Best used together with
 [YACReader](https://www.yacreader.com) (see [Reading your downloads](#reading-your-downloads)).
 
+![The mangashelf popup on a Pepper&Carrot episode: ten pages selected, CBZ chosen](.github/screenshot-popup.png)
+
+*Screenshot shows [Pepper&Carrot](https://www.peppercarrot.com) by David Revoy, CC BY 4.0.*
+
 ## Install
 
 Download the latest version from the
@@ -69,3 +73,7 @@ so each series gets its own folder.
   scroll, click **Scroll & rescan**.
 
 Full list and known problems: [SUPPORTED_SITES.md](SUPPORTED_SITES.md).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
