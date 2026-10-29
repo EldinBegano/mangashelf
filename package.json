@@ -1,0 +1,33 @@
+{
+  "name": "mangashelf",
+  "description": "Download manga chapters, galleries and images from many sites as folders, ZIP or CBZ.",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "xpi": "wxt zip -b firefox && cp .output/mangashelf-$npm_package_version-firefox.zip .output/mangashelf-firefox.xpi",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@wxt-dev/module-svelte": "^2.0.5",
+    "happy-dom": "^21.0.4",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.7",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5",
+    "web-ext": "^10.8.0",
+    "wxt": "^0.21.5"
+  }
+}
