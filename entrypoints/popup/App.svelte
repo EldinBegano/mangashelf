@@ -9,6 +9,8 @@
   import type { GalleryPage, JobProgress, MangadexQuality, SaveFormat } from '@/lib/types';
 
   let tabId = $state<number>();
+  /** Private window: only private jobs are shown, and vice versa. */
+  let incognito = false;
   let scan = $state<ScanResult>();
   let error = $state('');
   let loading = $state(true);
@@ -75,10 +77,10 @@
   }
 
   async function download() {
-    if (!gallery) return;
+    if (!gallery || tabId === undefined) return;
     try {
-      await send({ type: 'download', gallery: $state.snapshot(gallery), pages: chosen, format });
-      jobs = await send<JobProgress[]>({ type: 'jobs' });
+      await send({ type: 'download', gallery: $state.snapshot(gallery), pages: chosen, format, tabId });
+      jobs = await send<JobProgress[]>({ type: 'jobs', incognito });
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     }
@@ -102,7 +104,7 @@
 
   onMount(() => {
     const onMessage = (msg: Message) => {
-      if (msg?.type !== 'job:progress') return;
+      if (msg?.type !== 'job:progress' || msg.progress.incognito !== incognito) return;
       const i = jobs.findIndex((j) => j.id === msg.progress.id);
       if (i >= 0) jobs[i] = msg.progress;
       else jobs = [msg.progress, ...jobs];
@@ -114,9 +116,10 @@
       format = settings.format;
       quality = settings.mangadexQuality;
       minSize = settings.minSize;
-      jobs = await send<JobProgress[]>({ type: 'jobs' }).catch(() => []);
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       tabId = tab?.id;
+      incognito = tab?.incognito ?? false;
+      jobs = await send<JobProgress[]>({ type: 'jobs', incognito }).catch(() => []);
       await rescan();
     })();
 

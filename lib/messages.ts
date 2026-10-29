@@ -4,10 +4,10 @@ import type { ExtractOptions, Gallery, JobProgress, JobSpec, MangadexQuality, Sa
 
 export type Message =
   | { type: 'scan'; tabId: number; autoScroll?: boolean; mangadexQuality?: MangadexQuality }
-  | { type: 'download'; gallery: Gallery; pages: number[]; format: SaveFormat }
-  | { type: 'jobs' }
+  | { type: 'download'; gallery: Gallery; pages: number[]; format: SaveFormat; tabId: number }
+  | { type: 'jobs'; incognito: boolean }
   /** Offscreen document → background: write a blob URL to disk (Chrome only). */
-  | { type: 'save'; url: string; filename: string }
+  | { type: 'save'; url: string; filename: string; incognito: boolean }
   /** Background → offscreen document: run a job (Chrome only). */
   | { type: 'job:start'; spec: JobSpec }
   /** Broadcast to background and popup. */

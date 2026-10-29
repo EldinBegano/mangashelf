@@ -9,7 +9,7 @@ listen({
       async save(blob, filename) {
         const url = URL.createObjectURL(blob);
         try {
-          await send({ type: 'save', url, filename });
+          await send({ type: 'save', url, filename, incognito: spec.incognito });
         } finally {
           URL.revokeObjectURL(url);
         }

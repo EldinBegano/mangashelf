@@ -1,7 +1,7 @@
 import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 import { downloadAndWait } from '@/lib/downloads';
-import { listJobs, recordProgress, startJob } from '@/lib/job-host';
+import { forgetPrivateJobs, listJobs, recordProgress, startJob } from '@/lib/job-host';
 import { listen, type ScanFn, type ScanReply } from '@/lib/messages';
 import { jobLabel } from '@/lib/job-runner';
 import { folderPath, pageNames, stemFromUrl } from '@/lib/naming';
@@ -29,7 +29,13 @@ async function scanTab(tabId: number, autoScroll = false, quality?: MangadexQual
   return reply;
 }
 
-async function startDownload(gallery: Gallery, pages: number[], format: SaveFormat, names?: string[]) {
+async function startDownload(
+  gallery: Gallery,
+  pages: number[],
+  format: SaveFormat,
+  incognito: boolean,
+  names?: string[],
+) {
   if (pages.length === 0) throw new Error('No pages selected');
   const settings = await getSettings();
   const allNames = pageNames(gallery.pages.length);
@@ -41,9 +47,18 @@ async function startDownload(gallery: Gallery, pages: number[], format: SaveForm
     folder: folderPath(settings.baseFolder, settings.folderTemplate, gallery),
     names: names ?? pages.map((i) => allNames[i]!),
     concurrency: settings.concurrency,
+    incognito,
   };
   await ensureRefererRules(gallery);
-  recordProgress({ id: spec.id, label: jobLabel(spec), total: pages.length, done: 0, failed: [], status: 'running' });
+  recordProgress({
+    id: spec.id,
+    label: jobLabel(spec),
+    total: pages.length,
+    done: 0,
+    failed: [],
+    status: 'running',
+    incognito,
+  });
   await startJob(spec);
   return spec.id;
 }
@@ -53,9 +68,10 @@ export default defineBackground({
   main() {
     listen({
       scan: ({ tabId, autoScroll, mangadexQuality }) => scanTab(tabId, autoScroll, mangadexQuality),
-      download: ({ gallery, pages, format }) => startDownload(gallery, pages, format),
-      jobs: () => listJobs(),
-      save: ({ url, filename }) => downloadAndWait(url, filename),
+      download: async ({ gallery, pages, format, tabId }) =>
+        startDownload(gallery, pages, format, (await browser.tabs.get(tabId)).incognito),
+      jobs: ({ incognito }) => listJobs(incognito),
+      save: ({ url, filename, incognito }) => downloadAndWait(url, filename, incognito),
       'job:progress': ({ progress }) => recordProgress(progress),
     });
 
@@ -66,7 +82,13 @@ export default defineBackground({
       browser.contextMenus.create({ id: MENU_PAGE, title: 'Download all pages with mangashelf', contexts: ['page'] });
     });
 
+    browser.windows.onRemoved.addListener(async () => {
+      const open = await browser.windows.getAll();
+      if (!open.some((w) => w.incognito)) forgetPrivateJobs();
+    });
+
     browser.contextMenus.onClicked.addListener(async (info, tab) => {
+      const incognito = tab?.incognito ?? false;
       try {
         if (info.menuItemId === MENU_IMAGE && info.srcUrl) {
           const pageUrl = info.pageUrl ?? tab?.url ?? info.srcUrl;
@@ -78,11 +100,11 @@ export default defineBackground({
             referer: pageUrl,
             pages: [{ url: info.srcUrl }],
           };
-          await startDownload(gallery, [0], 'folder', [stemFromUrl(info.srcUrl)]);
+          await startDownload(gallery, [0], 'folder', incognito, [stemFromUrl(info.srcUrl)]);
         } else if (info.menuItemId === MENU_PAGE && tab?.id !== undefined) {
           const { gallery } = await scanTab(tab.id);
           const settings = await getSettings();
-          await startDownload(gallery, gallery.preselect ?? gallery.pages.map((_, i) => i), settings.format);
+          await startDownload(gallery, gallery.preselect ?? gallery.pages.map((_, i) => i), settings.format, incognito);
         }
       } catch (err) {
         console.error('[mangashelf] context menu download failed', err);

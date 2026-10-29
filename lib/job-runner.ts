@@ -24,6 +24,7 @@ export async function runJob(spec: JobSpec, hooks: JobHooks): Promise<JobProgres
     done: 0,
     failed: [],
     status: 'running',
+    incognito: spec.incognito,
   };
   const report = () => hooks.progress({ ...progress, failed: [...progress.failed] });
   report();

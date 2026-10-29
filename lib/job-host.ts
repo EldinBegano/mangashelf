@@ -1,25 +1,31 @@
 import { browser, type Browser } from 'wxt/browser';
 import { downloadAndWait } from './downloads';
+import { JobList } from './job-list';
 import { runJob } from './job-runner';
 import { broadcast, send } from './messages';
 import type { JobProgress, JobSpec } from './types';
 
-const MAX_JOBS = 20;
-const jobs = new Map<string, JobProgress>();
+const jobs = new JobList();
+let restored = false;
 
-/** Latest progress per job; mirrored to session storage so a restarted service worker still knows. */
+/** Normal-window jobs are mirrored to session storage so a restarted service worker still knows them. */
 export function recordProgress(p: JobProgress): void {
-  jobs.set(p.id, p);
-  while (jobs.size > MAX_JOBS) jobs.delete(jobs.keys().next().value!);
-  browser.storage.session?.set({ jobs: [...jobs.values()] }).catch(() => {});
+  jobs.record(p);
+  browser.storage.session?.set({ jobs: jobs.persistable() }).catch(() => {});
 }
 
-export async function listJobs(): Promise<JobProgress[]> {
-  if (jobs.size === 0) {
+export async function listJobs(incognito: boolean): Promise<JobProgress[]> {
+  if (!restored) {
+    restored = true;
     const stored = await browser.storage.session?.get('jobs').catch(() => undefined);
-    for (const p of (stored?.jobs as JobProgress[] | undefined) ?? []) jobs.set(p.id, p);
+    jobs.restore((stored?.jobs as JobProgress[] | undefined) ?? []);
   }
-  return [...jobs.values()].reverse();
+  return jobs.list(incognito);
+}
+
+/** Called once no private window is left open. */
+export function forgetPrivateJobs(): void {
+  jobs.forgetPrivate();
 }
 
 let creatingOffscreen: Promise<void> | undefined;
@@ -60,7 +66,7 @@ export async function startJob(spec: JobSpec): Promise<void> {
       async save(blob, filename) {
         const url = URL.createObjectURL(blob);
         try {
-          await downloadAndWait(url, filename);
+          await downloadAndWait(url, filename, spec.incognito);
         } finally {
           URL.revokeObjectURL(url);
         }

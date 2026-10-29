@@ -29,6 +29,7 @@ function spec(patch: Partial<JobSpec> = {}): JobSpec {
     folder: 'mangashelf/example/Series _1_/Ch.2',
     names: ['001', '002', '003'],
     concurrency: 2,
+    incognito: false,
     ...patch,
   };
 }

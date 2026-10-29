@@ -27,6 +27,11 @@ Settings (⚙ in the popup): save location, default format, parallel downloads, 
 
 Right-click any image → **Download image with mangashelf**.
 
+**Private windows:** downloads started in a private window show only in private windows,
+aren't kept in the browser's download history, and are forgotten when the last private
+window closes. The files still save to Downloads. In Firefox/Floorp, allow
+**Run in Private Windows** for mangashelf in `about:addons` first.
+
 ## Supported sites
 
 - **Full support:** MangaDex and the Manganato family (Manganato, Manganami, MangaKakalot, MangaNelo)

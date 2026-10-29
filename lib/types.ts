@@ -75,6 +75,8 @@ export interface JobSpec {
   /** Per-page file name stems (no extension), parallel to `pages`. */
   names: string[];
   concurrency: number;
+  /** Started from a private window: kept out of history and storage. */
+  incognito: boolean;
 }
 
 export type JobStatus = 'running' | 'packing' | 'done' | 'error';
@@ -87,4 +89,5 @@ export interface JobProgress {
   failed: number[];
   status: JobStatus;
   error?: string;
+  incognito: boolean;
 }
