@@ -1,7 +1,16 @@
-# mangashelf
+<p align="center">
+  <img src=".github/banner.svg" alt="mangashelf: save manga chapters as folders, ZIP or CBZ" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/EldinBegano/mangashelf/releases/latest"><img src="https://img.shields.io/github/v/release/EldinBegano/mangashelf?color=d6336c&label=release" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/Firefox%20%7C%20Floorp-supported-d6336c?logo=firefoxbrowser&logoColor=white" alt="Works in Firefox and Floorp">
+  <img src="https://img.shields.io/badge/Chrome-supported-d6336c?logo=googlechrome&logoColor=white" alt="Works in Chrome">
+</p>
 
 Browser extension that downloads manga chapters and image galleries as a folder of
-numbered images, a ZIP, or a CBZ.
+numbered images, a ZIP, or a CBZ. Best used together with
+[YACReader](https://www.yacreader.com) (see [Reading your downloads](#reading-your-downloads)).
 
 ## Install
 
@@ -38,6 +47,23 @@ Right-click any image → **Download image with mangashelf**.
 aren't kept in the browser's download history, and are forgotten when the last private
 window closes. The files still save to Downloads. In Firefox/Floorp, allow
 **Run in Private Windows** for mangashelf in `about:addons` first.
+
+## Reading your downloads
+
+Save as **CBZ** (in the popup, or as the default in ⚙ settings) and open the files in a comic
+reader. Every CBZ includes the series, chapter and right-to-left reading direction, and these
+readers pick that up automatically.
+
+| Reader | Runs on | Good for |
+|---|---|---|
+| [YACReader](https://www.yacreader.com) | Windows, macOS, Linux, iOS | Recommended. Desktop reader with a library and manga mode |
+| [Kavita](https://www.kavitareader.com) / [Komga](https://komga.org) | Self-hosted, read in any browser | Phone and PC with synced reading progress |
+| [Mihon](https://mihon.app) | Android | Reads CBZ files from your phone's storage ("Local source") |
+| [MComix](https://sourceforge.net/projects/mcomix/) | Linux, Windows | Lightweight, right-to-left double pages |
+
+YACReader only opens comic files (CBZ, CBR, PDF), not loose images, so pick **CBZ** rather
+than **Folder**. For Kavita and Komga, set the folder template in ⚙ to `{series}/{chapter}`
+so each series gets its own folder.
 
 ## Supported sites
 

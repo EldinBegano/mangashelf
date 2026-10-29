@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chapterLabel, extensionFor, folderPath, pageNames, sanitizeSegment, stemFromUrl } from '../lib/naming';
+import { chapterLabel, extensionFor, folderPath, pageNames, sanitizeSegment, sniffImage, stemFromUrl } from '../lib/naming';
 import type { Gallery } from '../lib/types';
 
 const gallery = (patch: Partial<Gallery> = {}): Gallery => ({
@@ -68,6 +68,25 @@ describe('extensionFor', () => {
     expect(extensionFor('application/octet-stream', 'https://x/a.JPEG?v=1')).toBe('jpg');
     expect(extensionFor(null, 'https://x/a.png')).toBe('png');
     expect(extensionFor(null, 'https://x/image')).toBe('jpg');
+  });
+});
+
+describe('sniffImage', () => {
+  const bytes = (...parts: Array<number[] | string>) =>
+    new Uint8Array(parts.flatMap((p) => (typeof p === 'string' ? [...p].map((c) => c.charCodeAt(0)) : p)));
+
+  it.each([
+    [bytes([0xff, 0xd8, 0xff, 0xe0]), 'jpg'],
+    [bytes([0x89], 'PNG', [0x0d, 0x0a]), 'png'],
+    [bytes('GIF89a'), 'gif'],
+    [bytes('RIFF', [0, 0, 0, 0], 'WEBPVP8 '), 'webp'],
+    [bytes([0, 0, 0, 0x1c], 'ftypavif'), 'avif'],
+  ])('detects %#', (data, ext) => {
+    expect(sniffImage(data)?.ext).toBe(ext);
+  });
+
+  it('returns nothing for unknown data', () => {
+    expect(sniffImage(bytes('<html>'))).toBeUndefined();
   });
 });
 

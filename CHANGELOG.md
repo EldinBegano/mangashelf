@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Files got the wrong extension when a site mislabeled them (e.g. JPEGs saved as `.png`), so comic readers refused to open them
+
 ## [0.2.0] - 2026-10-29
 
 ### Added

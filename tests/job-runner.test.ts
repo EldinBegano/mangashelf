@@ -103,6 +103,15 @@ describe('runJob', () => {
     expect(Object.keys(files)).toEqual(['001.png', '002.png', '003.png']);
   });
 
+  it('names files by their real format, not the content type the server claims', async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2]);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(jpeg, { headers: { 'content-type': 'image/png' } })));
+    const h = hooks();
+    await runJob(spec({ pages: [0], names: ['001'] }), h);
+    expect(h.saved.map((s) => s.filename)).toEqual(['mangashelf/example/Series _1_/Ch.2/001.jpg']);
+    expect(h.saved[0]!.blob.type).toBe('image/jpeg');
+  });
+
   it('reports failed pages and still saves the rest', async () => {
     stubFetch(['/3.png']);
     const h = hooks();

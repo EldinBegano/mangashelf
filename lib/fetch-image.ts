@@ -1,4 +1,4 @@
-import { extensionFor } from './naming';
+import { extensionFor, sniffImage } from './naming';
 
 export interface FetchedImage {
   data: Uint8Array<ArrayBuffer>;
@@ -17,7 +17,12 @@ async function fetchOnce(url: string): Promise<FetchedImage> {
   if (/^text\/html/i.test(type)) throw new Error('Got an HTML page instead of an image');
   const data = new Uint8Array(await res.arrayBuffer());
   if (data.length === 0) throw new Error('Empty response');
-  return { data, type: type.split(';')[0] || 'application/octet-stream', ext: extensionFor(type, url) };
+  const sniffed = sniffImage(data);
+  return {
+    data,
+    type: sniffed?.type ?? (type.split(';')[0] || 'application/octet-stream'),
+    ext: sniffed?.ext ?? extensionFor(type, url),
+  };
 }
 
 /** Try each URL with exponential backoff; throws the last error when all fail. */

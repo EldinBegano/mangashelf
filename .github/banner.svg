@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-label="mangashelf: save manga chapters as folders, ZIP or CBZ">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c1c1e"/>
+      <stop offset="1" stop-color="#2d1622"/>
+    </linearGradient>
+    <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse">
+      <circle cx="7" cy="7" r="2.2" fill="#f06595"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0.35" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0.22"/>
+    </linearGradient>
+    <mask id="dotMask">
+      <rect width="1200" height="380" fill="url(#fade)"/>
+    </mask>
+    <clipPath id="card">
+      <rect width="1200" height="380" rx="28"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#card)">
+    <rect width="1200" height="380" fill="url(#bg)"/>
+    <rect width="1200" height="380" fill="url(#dots)" mask="url(#dotMask)"/>
+    <!-- speed lines -->
+    <g stroke="#f06595" stroke-opacity="0.18" stroke-width="3" stroke-linecap="round">
+      <path d="M690 40 L820 40"/>
+      <path d="M720 62 L800 62"/>
+      <path d="M660 330 L760 330"/>
+      <path d="M700 352 L780 352"/>
+    </g>
+  </g>
+
+  <!-- app icon -->
+  <g transform="translate(72 100)">
+    <rect width="180" height="180" rx="40" fill="#d6336c"/>
+    <path d="M90 26v72" stroke="#fff" stroke-width="22" stroke-linecap="round"/>
+    <path d="M54 70l36 36 36-36" fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="31" y="132" width="118" height="20" rx="10" fill="#fff"/>
+  </g>
+
+  <!-- title -->
+  <g font-family="Inter, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+    <text x="292" y="185" font-size="88" font-weight="800" fill="#ffffff" letter-spacing="-2">mangashelf</text>
+    <text x="296" y="236" font-size="26" fill="#d1d1d6">Save manga chapters as folders, ZIP or CBZ.</text>
+    <g font-size="19" font-weight="600" fill="#f06595">
+      <rect x="296" y="264" width="168" height="38" rx="19" fill="none" stroke="#f06595" stroke-width="2"/>
+      <text x="380" y="289" text-anchor="middle">Firefox · Floorp</text>
+      <rect x="476" y="264" width="104" height="38" rx="19" fill="none" stroke="#f06595" stroke-width="2"/>
+      <text x="528" y="289" text-anchor="middle">Chrome</text>
+      <rect x="592" y="264" width="180" height="38" rx="19" fill="none" stroke="#f06595" stroke-width="2"/>
+      <text x="682" y="289" text-anchor="middle">CBZ + ComicInfo</text>
+    </g>
+  </g>
+
+  <!-- shelf with manga volumes -->
+  <g transform="translate(884 86) scale(0.88)">
+    <!-- falling arrow into the gap -->
+    <g stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9">
+      <path d="M190 0v54"/>
+      <path d="M168 34l22 22 22-22"/>
+    </g>
+    <g stroke="#1c1c1e" stroke-width="3">
+      <rect x="0" y="96" width="42" height="164" rx="5" fill="#d6336c"/>
+      <rect x="44" y="118" width="38" height="142" rx="5" fill="#f2f2f7"/>
+      <rect x="84" y="104" width="44" height="156" rx="5" fill="#f06595"/>
+      <rect x="130" y="126" width="36" height="134" rx="5" fill="#48484a"/>
+      <!-- gap for the incoming volume -->
+      <rect x="168" y="84" width="44" height="176" rx="5" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-opacity="0.6" stroke-dasharray="8 7"/>
+      <rect x="214" y="110" width="40" height="150" rx="5" fill="#d6336c"/>
+      <rect x="234" y="128" width="40" height="132" rx="5" fill="#f2f2f7" transform="rotate(12 254 260)"/>
+    </g>
+    <!-- spine details -->
+    <g fill="#1c1c1e" fill-opacity="0.35">
+      <rect x="10" y="120" width="22" height="6" rx="3"/>
+      <rect x="10" y="226" width="22" height="6" rx="3"/>
+      <rect x="54" y="140" width="18" height="6" rx="3"/>
+      <rect x="96" y="128" width="20" height="6" rx="3"/>
+      <rect x="96" y="226" width="20" height="6" rx="3"/>
+      <rect x="224" y="134" width="20" height="6" rx="3"/>
+    </g>
+    <g fill="#f2f2f7" fill-opacity="0.5">
+      <rect x="139" y="148" width="18" height="6" rx="3"/>
+    </g>
+    <!-- shelf plank -->
+    <rect x="-18" y="260" width="320" height="16" rx="6" fill="#8e8e93"/>
+    <rect x="-18" y="276" width="320" height="8" rx="4" fill="#636366"/>
+  </g>
+</svg>

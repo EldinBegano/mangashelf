@@ -53,6 +53,21 @@ const EXT_BY_TYPE: Record<string, string> = {
   'image/svg+xml': 'svg',
 };
 
+/**
+ * Image type from the file's first bytes. Servers sometimes label files wrongly
+ * (JPEGs sent as image/png), and readers refuse files whose extension lies.
+ */
+export function sniffImage(bytes: Uint8Array): { type: string; ext: string } | undefined {
+  const ascii = (start: number, end: number) => String.fromCharCode(...bytes.subarray(start, end));
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return { type: 'image/jpeg', ext: 'jpg' };
+  if (bytes[0] === 0x89 && ascii(1, 4) === 'PNG') return { type: 'image/png', ext: 'png' };
+  if (ascii(0, 4) === 'GIF8') return { type: 'image/gif', ext: 'gif' };
+  if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return { type: 'image/webp', ext: 'webp' };
+  if (ascii(4, 12) === 'ftypavif' || ascii(4, 12) === 'ftypavis') return { type: 'image/avif', ext: 'avif' };
+  if (ascii(0, 2) === 'BM') return { type: 'image/bmp', ext: 'bmp' };
+  return undefined;
+}
+
 export function extensionFor(contentType: string | null, url: string): string {
   const type = contentType?.split(';')[0]?.trim().toLowerCase();
   const known = type && EXT_BY_TYPE[type];
