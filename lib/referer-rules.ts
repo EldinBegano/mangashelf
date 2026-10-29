@@ -13,12 +13,21 @@ function hostsOf(gallery: Gallery): Set<string> {
   return hosts;
 }
 
+let pending: Promise<void> = Promise.resolve();
+
 /**
  * Hotlink-protected hosts reject requests without the reader page as Referer.
  * Session rules (cleared on browser restart) set it, but only for requests that
  * do not come from a tab (tabId -1): our offscreen/background fetches and the popup.
+ * Calls run one at a time; concurrent ones would pick the same new rule id.
  */
-export async function ensureRefererRules(gallery: Gallery): Promise<void> {
+export function ensureRefererRules(gallery: Gallery): Promise<void> {
+  const run = pending.then(() => applyRefererRules(gallery));
+  pending = run.catch(() => {});
+  return run;
+}
+
+async function applyRefererRules(gallery: Gallery): Promise<void> {
   const dnr = browser.declarativeNetRequest;
   if (!gallery.referer || !dnr?.updateSessionRules) return;
   const existing = await dnr.getSessionRules();

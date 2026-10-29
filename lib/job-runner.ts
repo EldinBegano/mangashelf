@@ -4,6 +4,9 @@ import { fetchImage } from './fetch-image';
 import { chapterLabel } from './naming';
 import type { GalleryPage, JobProgress, JobSpec } from './types';
 
+/** Re-resolve page URLs at most this often (MangaDex at-home URLs last about 15 minutes). */
+const REFRESH_INTERVAL_MS = 60_000;
+
 export interface JobHooks {
   /** Persist one file under the downloads folder; resolves when it is written. */
   save(blob: Blob, filename: string): Promise<void>;
@@ -31,10 +34,15 @@ export async function runJob(spec: JobSpec, hooks: JobHooks): Promise<JobProgres
 
   let pages: GalleryPage[] = gallery.pages;
   let refreshed: Promise<GalleryPage[]> | undefined;
+  let refreshedAt = 0;
   const refresh = () => {
     const extractor = getExtractor(gallery.extractor);
     if (!extractor?.refresh) return undefined;
-    refreshed ??= extractor.refresh(gallery, fetchJson).then((fresh) => (pages = fresh));
+    // Failures share one refresh; a job that outlives the refreshed URLs too gets another.
+    if (!refreshed || Date.now() - refreshedAt > REFRESH_INTERVAL_MS) {
+      refreshedAt = Date.now();
+      refreshed = extractor.refresh(gallery, fetchJson).then((fresh) => (pages = fresh));
+    }
     return refreshed;
   };
 

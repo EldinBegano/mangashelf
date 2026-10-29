@@ -54,7 +54,10 @@ function hooks() {
   };
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('runJob', () => {
   it('saves each page into the folder, using fallbacks', async () => {
@@ -120,6 +123,36 @@ describe('runJob', () => {
     expect(h.saved).toHaveLength(2);
   });
 
+  it('refreshes expired URLs again when the job outlives the first refresh', async () => {
+    // Each at-home call hands out a new node whose URLs work for 15 minutes; every page takes 20.
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    let node = 0;
+    let issuedAt = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('/at-home/server/')) {
+          node++;
+          issuedAt = now;
+          return Response.json({ baseUrl: `https://node${node}.example`, chapter: { hash: 'h', data: ['1.png', '2.png'], dataSaver: [] } });
+        }
+        if (!url.startsWith(`https://node${node}.example/`) || now - issuedAt >= 15 * 60_000) return new Response('', { status: 404 });
+        now += 20 * 60_000;
+        return new Response(PNG, { headers: { 'content-type': 'image/png' } });
+      }),
+    );
+    const mangadex: Gallery = {
+      ...gallery,
+      extractor: 'mangadex',
+      refresh: { chapterId: 'c', quality: 'data' },
+      pages: [{ url: 'https://expired.example/data/h/1.png' }, { url: 'https://expired.example/data/h/2.png' }],
+    };
+    const result = await runJob(spec({ gallery: mangadex, pages: [0, 1], names: ['001', '002'], concurrency: 1 }), hooks());
+    expect(result).toMatchObject({ status: 'done', done: 2, failed: [] });
+    expect(node).toBe(2);
+  });
+
   it('errors when nothing could be downloaded', async () => {
     stubFetch(['cdn.example.com']);
     const h = hooks();
@@ -131,6 +164,50 @@ describe('runJob', () => {
 });
 
 describe('comicInfo', () => {
+  const elements = (xml: string) => [...xml.matchAll(/^  <(\w+)>/gm)].map((m) => m[1]);
+
+  it('writes every field in schema order', () => {
+    const xml = comicInfo(
+      {
+        ...gallery,
+        title: 'Title',
+        volume: '13',
+        count: 168,
+        summary: 'About\u0001 it',
+        writers: ['A', 'B'],
+        artists: ['C'],
+        groups: ['Group'],
+        genres: ['Drama'],
+        language: 'en',
+        originalLanguage: 'ja',
+        ageRating: 'Teen',
+      },
+      3,
+    );
+    expect(elements(xml)).toEqual([
+      'Title', 'Series', 'Number', 'Count', 'Volume', 'Summary', 'Writer', 'Penciller', 'Translator',
+      'Genre', 'Tags', 'Web', 'PageCount', 'LanguageISO', 'Manga', 'AgeRating',
+    ]);
+    expect(xml).toContain('<Writer>A, B</Writer>');
+    expect(xml).toContain('<Summary>About it</Summary>');
+  });
+
+  it.each([
+    ['ja', 'YesAndRightToLeft'],
+    ['ko', 'Yes'],
+    ['zh-hk', 'Yes'],
+  ])('reading direction for %s originals: %s', (originalLanguage, manga) => {
+    expect(comicInfo({ ...gallery, originalLanguage }, 1)).toContain(`<Manga>${manga}</Manga>`);
+  });
+
+  it('leaves the reading direction to the reader app when the origin is unknown', () => {
+    expect(comicInfo({ ...gallery, extractor: 'manganato' }, 1)).not.toContain('<Manga>');
+  });
+
+  it('drops volumes that are not whole numbers', () => {
+    expect(comicInfo({ ...gallery, volume: '1.5' }, 1)).not.toContain('<Volume>');
+  });
+
   it('omits unknown fields', () => {
     const xml = comicInfo({ ...gallery, chapter: undefined, tags: undefined }, 1);
     expect(xml).not.toContain('<Number>');

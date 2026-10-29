@@ -155,7 +155,9 @@ export function findReaderImages(doc: Document, base: string, minSize: number): 
   const groups = new Map<string, Candidate[]>();
   for (const c of candidates) {
     const key = ancestorSignature(c.el);
-    groups.set(key, [...(groups.get(key) ?? []), c]);
+    const group = groups.get(key);
+    if (group) group.push(c);
+    else groups.set(key, [c]);
   }
   let best: Candidate[] = [];
   let bestScore = 0;

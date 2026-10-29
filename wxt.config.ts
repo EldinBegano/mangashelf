@@ -11,7 +11,12 @@ const forAmo = process.env.MANGASHELF_STORE === 'amo';
 export default defineConfig({
   modules: ['@wxt-dev/module-svelte'],
   zip: forAmo
-    ? { artifactTemplate: '{{name}}-{{version}}-amo.zip', sourcesTemplate: '{{name}}-{{version}}-amo-sources.zip' }
+    ? {
+        artifactTemplate: '{{name}}-{{version}}-amo.zip',
+        sourcesTemplate: '{{name}}-{{version}}-amo-sources.zip',
+        // Reviewers only need what builds the add-on.
+        excludeSources: ['store/**', 'docs/**', '.github/**'],
+      }
     : {},
   manifest: ({ browser }) => ({
     // The store listing name tells it apart from an unrelated "Manga Shelf" add-on.

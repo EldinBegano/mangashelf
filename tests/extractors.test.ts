@@ -22,7 +22,11 @@ describe('pickExtractor', () => {
 });
 
 describe('mangadex', () => {
-  const fetchJson = routes({ '/chapter/': 'mangadex-chapter.json', '/at-home/server/': 'mangadex-at-home.json' });
+  const fetchJson = routes({
+    '/chapter/': 'mangadex-chapter.json',
+    '/at-home/server/': 'mangadex-at-home.json',
+    '/manga/': 'mangadex-manga.json',
+  });
 
   it('builds the chapter from the API', async () => {
     const { gallery, warning } = await scanDocument(MANGADEX_URL, empty(), options, fetchJson);
@@ -40,6 +44,29 @@ describe('mangadex', () => {
     expect(first.url).toMatch(/^https:\/\/[^/]+\/data\/706b5aaec8d1e8872f59b61ceabc4998\/1-[0-9a-f]+\.jpg$/);
     expect(first.fallbacks?.[0]).toMatch(/^https:\/\/uploads\.mangadex\.org\/data\//);
     expect(first.thumb).toContain('/data-saver/');
+  });
+
+  it('fills in series metadata for ComicInfo', async () => {
+    const { gallery } = await scanDocument(MANGADEX_URL, empty(), options, fetchJson);
+    expect(gallery).toMatchObject({
+      originalLanguage: 'ja',
+      writers: ['Kusaba Michiteru'],
+      artists: ['Kusaba Michiteru'],
+      groups: ['Example Scans'],
+      genres: ['Romance', 'Sports', 'Drama'],
+      tags: [],
+      count: 168,
+    });
+    expect(gallery.summary).toMatch(/^There lives a man who has lost his memory/);
+    expect(gallery.ageRating).toBeUndefined();
+  });
+
+  it('still scans the chapter when the series request fails', async () => {
+    const partial = routes({ '/chapter/': 'mangadex-chapter.json', '/at-home/server/': 'mangadex-at-home.json' });
+    const { gallery, warning } = await scanDocument(MANGADEX_URL, empty(), options, partial);
+    expect(warning).toBeUndefined();
+    expect(gallery.writers).toBeUndefined();
+    expect(gallery.pages).toHaveLength(19);
   });
 
   it('uses data-saver files when asked', async () => {

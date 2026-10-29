@@ -18,7 +18,19 @@ export interface Gallery {
   chapter?: string;
   title?: string;
   language?: string;
+  /** Language the series was first published in (e.g. "ja"); decides the reading direction. */
+  originalLanguage?: string;
+  summary?: string;
+  writers?: string[];
+  artists?: string[];
+  /** Scanlation groups. */
+  groups?: string[];
+  genres?: string[];
   tags?: string[];
+  /** ComicInfo AgeRating value, e.g. "Teen". */
+  ageRating?: string;
+  /** Total chapters, once the series is finished. */
+  count?: number;
   sourceUrl: string;
   /** Referer the image host expects; installs a header rule when set. */
   referer?: string;

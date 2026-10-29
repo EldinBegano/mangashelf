@@ -7,21 +7,45 @@ export interface ArchiveEntry {
 }
 
 function xml(text: string): string {
-  return text.replace(/[<>&'"]/g, (c) => `&${{ '<': 'lt', '>': 'gt', '&': 'amp', "'": 'apos', '"': 'quot' }[c]};`);
+  return text
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '') // not allowed anywhere in XML 1.0
+    .replace(/[<>&'"]/g, (c) => `&${{ '<': 'lt', '>': 'gt', '&': 'amp', "'": 'apos', '"': 'quot' }[c]};`);
 }
 
-/** ComicInfo.xml (Anansi schema v2) understood by Komga, Kavita, YACReader, etc. */
+/** ComicInfo `Manga` value: Japanese manga reads right to left, Korean and Chinese comics left to right. */
+function mangaValue(originalLanguage?: string): string | undefined {
+  if (originalLanguage === 'ja') return 'YesAndRightToLeft';
+  if (originalLanguage === 'ko' || originalLanguage?.startsWith('zh')) return 'Yes';
+  return undefined;
+}
+
+/** Count and Volume are xs:int; strict parsers reject a "1.5" there. */
+const integer = (value?: string | number) => (/^\d+$/.test(String(value ?? '')) ? value : undefined);
+
+const list = (values?: string[]) => values?.join(', ');
+
+/**
+ * ComicInfo.xml (Anansi schema v2.1) understood by Komga, Kavita, YACReader, etc.
+ * Fields follow the schema's sequence order, which strict parsers enforce.
+ */
 export function comicInfo(g: Gallery, pageCount: number): string {
   const fields: Array<[string, string | number | undefined]> = [
     ['Title', g.title],
     ['Series', g.series],
     ['Number', g.chapter],
-    ['Volume', g.volume],
-    ['PageCount', pageCount],
+    ['Count', integer(g.count)],
+    ['Volume', integer(g.volume)],
+    ['Summary', g.summary],
+    ['Writer', list(g.writers)],
+    ['Penciller', list(g.artists)],
+    ['Translator', list(g.groups)],
+    ['Genre', list(g.genres)],
+    ['Tags', list(g.tags)],
     ['Web', g.sourceUrl],
-    ['Tags', g.tags?.join(', ')],
+    ['PageCount', pageCount],
     ['LanguageISO', g.language],
-    ['Manga', g.extractor === 'generic' ? undefined : 'YesAndRightToLeft'],
+    ['Manga', mangaValue(g.originalLanguage)],
+    ['AgeRating', g.ageRating],
   ];
   const body = fields
     .filter(([, v]) => v !== undefined && v !== '')
