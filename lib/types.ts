@@ -68,7 +68,10 @@ export type SaveFormat = 'folder' | 'zip' | 'cbz';
 
 export interface Settings {
   baseFolder: string;
-  /** Folder template; tokens: {site} {series} {chapter} {title}. Empty segments are dropped. */
+  /**
+   * Folder template; tokens: {site} {series} {chapter} {title} {volume} {number} {lang} {group},
+   * optionally zero-padded like {number:000}. Empty segments are dropped.
+   */
   folderTemplate: string;
   format: SaveFormat;
   concurrency: number;

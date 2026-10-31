@@ -6,6 +6,7 @@
   import { canRetry } from '@/lib/job-list';
   import { send, type Message } from '@/lib/messages';
   import { chapterLabel } from '@/lib/naming';
+  import { cachedScan, carrySelection } from '@/lib/scan-cache';
   import { getSettings, saveSettings } from '@/lib/settings';
   import { checkForUpdate, type UpdateInfo } from '@/lib/update-check';
   import type { GalleryPage, JobProgress, MangadexQuality, SaveFormat } from '@/lib/types';
@@ -16,16 +17,23 @@
   let scan = $state<ScanResult>();
   let error = $state('');
   let loading = $state(true);
+  /** A newer scan is on its way while a cached one is shown. */
+  let refreshing = $state(false);
   let format = $state<SaveFormat>('folder');
   let quality = $state<MangadexQuality>('data');
   let minSize = $state(300);
   let jobs = $state<JobProgress[]>([]);
   let update = $state<UpdateInfo>();
-  let measured = $state<Record<number, { w: number; h: number }>>({});
-  /** Index into thumbSources() per page; bumped when a thumbnail fails to load. */
-  let thumbAttempt = $state<Record<number, number>>({});
+  /** Loaded thumbnail sizes by page URL; a URL's image is the same in every scan. */
+  let measured = $state<Record<string, { w: number; h: number }>>({});
+  /** Index into thumbSources() by page URL; bumped when a thumbnail fails to load. */
+  let thumbAttempt = $state<Record<string, number>>({});
   const selected = new SvelteSet<number>();
   let anchor: number | undefined;
+  /** The user changed the selection since the scan on screen arrived. */
+  let touched = false;
+  /** Only the latest scan request may replace what is shown. */
+  let latestScan = 0;
 
   const gallery = $derived(scan?.gallery);
   const isGeneric = $derived(gallery?.extractor === 'generic');
@@ -34,32 +42,52 @@
       .map((page, index) => ({ page, index }))
       .filter(({ page, index }) => {
         if (!isGeneric) return true;
-        const w = measured[index]?.w ?? page.width;
-        const h = measured[index]?.h ?? page.height;
+        const w = measured[page.url]?.w ?? page.width;
+        const h = measured[page.url]?.h ?? page.height;
         return !((w !== undefined && w < minSize) || (h !== undefined && h < minSize));
       }),
   );
   const chosen = $derived(visible.filter(({ index }) => selected.has(index)).map(({ index }) => index));
 
-  async function rescan(autoScroll = false) {
+  /** Put a scan on screen. A refresh of the one shown keeps what the user picked. */
+  function show(result: ScanResult, refresh = false) {
+    const picks = refresh && touched && gallery ? carrySelection(gallery, result.gallery, selected) : undefined;
+    // Shift-click ranges start from an index, which means another page once the count changes.
+    if (gallery?.pages.length !== result.gallery.pages.length) anchor = undefined;
+    scan = result;
+    selected.clear();
+    for (const i of picks ?? result.gallery.preselect ?? result.gallery.pages.keys()) selected.add(i);
+    if (!picks) touched = false;
+  }
+
+  /** Scan the tab. A refresh runs behind the scan already shown and keeps it if it fails. */
+  async function rescan(autoScroll = false, refresh = false) {
     if (tabId === undefined) return;
-    loading = true;
-    error = '';
+    const id = ++latestScan;
+    if (refresh) {
+      refreshing = true;
+    } else {
+      loading = true;
+      error = '';
+    }
     try {
-      scan = await send<ScanResult>({ type: 'scan', tabId, autoScroll, mangadexQuality: quality });
-      measured = {};
-      thumbAttempt = {};
-      selected.clear();
-      for (const i of scan.gallery.preselect ?? scan.gallery.pages.keys()) selected.add(i);
+      const result = await send<ScanResult>({ type: 'scan', tabId, autoScroll, mangadexQuality: quality });
+      if (id === latestScan) show(result, refresh);
     } catch (err) {
-      scan = undefined;
-      error = err instanceof Error ? err.message : String(err);
+      if (id !== latestScan) return;
+      if (refresh) {
+        console.warn('[mangashelf] rescan failed, keeping the cached scan', err);
+      } else {
+        scan = undefined;
+        error = err instanceof Error ? err.message : String(err);
+      }
     } finally {
-      loading = false;
+      if (id === latestScan) loading = refreshing = false;
     }
   }
 
   function toggle(index: number, event: MouseEvent) {
+    touched = true;
     if (event.shiftKey && anchor !== undefined) {
       const order = visible.map((v) => v.index);
       const [a, b] = [order.indexOf(anchor), order.indexOf(index)].sort((x, y) => x - y) as [number, number];
@@ -72,10 +100,12 @@
   }
 
   function selectAll(on: boolean) {
+    touched = true;
     for (const { index } of visible) on ? selected.add(index) : selected.delete(index);
   }
 
   function invert() {
+    touched = true;
     for (const { index } of visible) selected.has(index) ? selected.delete(index) : selected.add(index);
   }
 
@@ -109,16 +139,14 @@
     return [...new Set([page.thumb, page.url, ...(page.fallbacks ?? [])].filter((u): u is string => !!u))];
   }
 
-  function onThumbError(index: number, page: GalleryPage) {
-    const next = (thumbAttempt[index] ?? 0) + 1;
-    if (next < thumbSources(page).length) thumbAttempt[index] = next;
+  function onThumbError(page: GalleryPage) {
+    const next = (thumbAttempt[page.url] ?? 0) + 1;
+    if (next < thumbSources(page).length) thumbAttempt[page.url] = next;
   }
 
-  function onThumbLoad(index: number, img: HTMLImageElement) {
+  function onThumbLoad(page: GalleryPage, img: HTMLImageElement) {
     // Thumbnails of generic pages are the full images, so this is the real size.
-    if (isGeneric && !gallery?.pages[index]?.thumb) {
-      measured[index] = { w: img.naturalWidth, h: img.naturalHeight };
-    }
+    if (isGeneric && !page.thumb) measured[page.url] = { w: img.naturalWidth, h: img.naturalHeight };
   }
 
   onMount(() => {
@@ -143,8 +171,19 @@
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       tabId = tab?.id;
       incognito = tab?.incognito ?? false;
-      jobs = await send<JobProgress[]>({ type: 'jobs', incognito }).catch(() => []);
-      await rescan();
+      const options = { minSize: settings.minSize, mangadexQuality: quality };
+      const [list, cached] = await Promise.all([
+        send<JobProgress[]>({ type: 'jobs', incognito }).catch(() => []),
+        tab?.id !== undefined && tab.url && !incognito ? cachedScan(tab.id, tab.url, options) : undefined,
+      ]);
+      jobs = list;
+      if (cached) {
+        show(cached.result);
+        loading = false;
+        if (!cached.fresh) await rescan(false, true);
+      } else {
+        await rescan();
+      }
     })();
 
     return () => browser.runtime.onMessage.removeListener(onMessage);
@@ -159,6 +198,7 @@
       <div class="meta">
         {#if chapterLabel(gallery)}<span>{chapterLabel(gallery)}</span> · {/if}
         <span>{gallery.pages.length} images</span>
+        {#if refreshing}<span class="refreshing"> · updating…</span>{/if}
       </div>
     {:else}
       <h1>mangashelf</h1>
@@ -196,11 +236,12 @@
           <li>
             <button class="thumb" class:on={selected.has(index)} onclick={(e) => toggle(index, e)}>
               <img
-                src={thumbSources(page)[thumbAttempt[index] ?? 0]}
+                src={thumbSources(page)[thumbAttempt[page.url] ?? 0]}
                 alt="Page {index + 1}"
                 loading="lazy"
-                onload={(e) => onThumbLoad(index, e.currentTarget as HTMLImageElement)}
-                onerror={() => onThumbError(index, page)}
+                decoding="async"
+                onload={(e) => onThumbLoad(page, e.currentTarget as HTMLImageElement)}
+                onerror={() => onThumbError(page)}
               />
               <span class="num">{index + 1}</span>
             </button>

@@ -49,6 +49,24 @@ describe('folderPath', () => {
     expect(folderPath('mangashelf', '{site}/{series}/{chapter}', g)).toBe('mangashelf/example/Re_Zero');
   });
 
+  it('fills volume, number, language and group tokens', () => {
+    const g = gallery({ volume: '2', chapter: '13', language: 'en', groups: ['Alpha', 'Beta'] });
+    expect(folderPath('', '{series}/Vol.{volume} Ch.{number} [{lang}] ({group})', g)).toBe(
+      'Lost Man/Vol.2 Ch.13 [en] (Alpha, Beta)',
+    );
+  });
+
+  it('pads the leading digits of a token', () => {
+    expect(folderPath('', '{number:000}', gallery({ chapter: '7' }))).toBe('007');
+    expect(folderPath('', '{number:000}', gallery({ chapter: '7.5' }))).toBe('007.5');
+    expect(folderPath('', '{number:00}', gallery({ chapter: '1234' }))).toBe('1234');
+    expect(folderPath('', '{volume:00} {number:000}', gallery({ volume: '3', chapter: 'Extra' }))).toBe('03 Extra');
+  });
+
+  it('drops a segment whose tokens are all missing', () => {
+    expect(folderPath('', '{series}/{group}/{number:000}', gallery({ chapter: '1' }))).toBe('Lost Man/001');
+  });
+
   it('allows a nested or empty base folder', () => {
     expect(folderPath('comics/manga/', '{series}', gallery())).toBe('comics/manga/Lost Man');
     expect(folderPath('', '{series}', gallery())).toBe('Lost Man');

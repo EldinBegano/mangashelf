@@ -15,6 +15,8 @@
     volume: '13',
     chapter: '123',
     title: 'The Good Old Days...',
+    language: 'en',
+    groups: ['Night Owl Scans'],
     sourceUrl: 'https://mangadex.org/chapter/…',
     pages: [],
   };
@@ -54,10 +56,15 @@
   </label>
 
   <label>
-    <span>Folder template <small><code>{'{site}'}</code> <code>{'{series}'}</code> <code>{'{chapter}'}</code> <code>{'{title}'}</code></small></span>
+    <span>Folder template</span>
     <input type="text" bind:value={settings.folderTemplate} />
   </label>
-  <p class="preview">Example: <code>{preview}</code></p>
+  <p class="preview">
+    {#each ['site', 'series', 'chapter', 'title', 'volume', 'number', 'lang', 'group'] as token}<code>{`{${token}}`}</code>{' '}{/each}
+    <br /><code>{'{chapter}'}</code> is the full label (Vol.13 Ch.123 - Title), <code>{'{number}'}</code> just the chapter number.
+    Add zeros to pad: <code>{'{number:000}'}</code> gives 007.
+    <br />Example: <code>{preview}</code>
+  </p>
 
   <label>
     <span>Default format</span>

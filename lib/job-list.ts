@@ -1,6 +1,9 @@
-import type { JobProgress, JobSpec } from './types';
+import type { JobProgress, JobSpec, JobStatus } from './types';
 
 const MAX_JOBS = 20;
+
+/** Still downloading or packing. */
+export const isActive = (status?: JobStatus) => status === 'running' || status === 'packing';
 
 /**
  * Latest progress per job, plus the spec it ran with (for retries). Jobs started from a
@@ -35,6 +38,11 @@ export class JobList {
   /** Newest first, only jobs from the same kind of window. */
   list(incognito: boolean): JobProgress[] {
     return [...this.jobs.values()].filter((j) => j.incognito === incognito).reverse();
+  }
+
+  /** Whether any job, private ones included, is still active. */
+  hasActive(): boolean {
+    return [...this.jobs.values()].some((j) => isActive(j.status));
   }
 
   /** What may be written to storage: normal-window jobs only. */

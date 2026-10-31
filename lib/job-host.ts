@@ -1,16 +1,14 @@
 import { browser, type Browser } from 'wxt/browser';
 import { downloadAndWait } from './downloads';
-import { canRetry, JobList, retrySpec } from './job-list';
+import { canRetry, isActive as active, JobList, retrySpec } from './job-list';
 import { abortJob, initialProgress, runJob } from './job-runner';
 import { broadcast, send } from './messages';
 import { ensureRefererRules } from './referer-rules';
 import { getSettings } from './settings';
-import type { JobProgress, JobSpec, JobStatus } from './types';
+import type { JobProgress, JobSpec } from './types';
 
 const jobs = new JobList();
 let restoring: Promise<void> | undefined;
-
-const active = (status?: JobStatus) => status === 'running' || status === 'packing';
 
 /** Load what a previous service worker stored, before anything is recorded over it. */
 function restore(): Promise<void> {
@@ -28,6 +26,7 @@ export async function recordProgress(p: JobProgress): Promise<void> {
   jobs.record(p);
   browser.storage.session?.set({ jobs: jobs.persistable() }).catch(() => {});
   if (!active(p.status) && (before === undefined || active(before))) ended(p);
+  if (!active(p.status)) closeOffscreenWhenIdle();
   updateBadge();
 }
 
@@ -109,9 +108,16 @@ async function notifyEnded(p: JobProgress): Promise<void> {
   });
 }
 
+/** Chrome closes the offscreen document this long after the last job ends. */
+const OFFSCREEN_IDLE_MS = 10_000;
+
 let creatingOffscreen: Promise<void> | undefined;
+let closingOffscreen: Promise<void> | undefined;
+let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
 async function ensureOffscreen(): Promise<void> {
+  clearTimeout(idleTimer);
+  await closingOffscreen;
   const contexts = await browser.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT' as Browser.runtime.ContextType] });
   if (contexts.length > 0) return;
   creatingOffscreen ??= browser.offscreen
@@ -122,6 +128,23 @@ async function ensureOffscreen(): Promise<void> {
     })
     .finally(() => (creatingOffscreen = undefined));
   await creatingOffscreen;
+}
+
+/**
+ * The offscreen document only exists to run jobs, so close it once none is left. The short
+ * wait spares reopening it when one download follows another.
+ */
+function closeOffscreenWhenIdle(): void {
+  if (import.meta.env.FIREFOX) return;
+  clearTimeout(idleTimer);
+  if (jobs.hasActive()) return;
+  idleTimer = setTimeout(() => {
+    if (jobs.hasActive() || creatingOffscreen || closingOffscreen) return;
+    closingOffscreen = browser.offscreen
+      .closeDocument()
+      .catch(() => {}) // already closed
+      .finally(() => (closingOffscreen = undefined));
+  }, OFFSCREEN_IDLE_MS);
 }
 
 async function sendWithRetry(spec: JobSpec): Promise<void> {

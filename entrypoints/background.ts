@@ -13,6 +13,7 @@ import {
 import { listen, type ScanFn, type ScanReply } from '@/lib/messages';
 import { folderPath, pageNames, stemFromUrl } from '@/lib/naming';
 import { ensureRefererRules } from '@/lib/referer-rules';
+import { cachedScan, cacheScan, forgetScan, richerScan } from '@/lib/scan-cache';
 import { getSettings } from '@/lib/settings';
 import type { Gallery, MangadexQuality, SaveFormat } from '@/lib/types';
 import type { ScanResult } from '@/lib/extractors';
@@ -23,6 +24,7 @@ const MENU_PAGE = 'mangashelf-page';
 async function scanTab(tabId: number, autoScroll = false, quality?: MangadexQuality): Promise<ScanResult> {
   const settings = await getSettings();
   const options = { minSize: settings.minSize, mangadexQuality: quality ?? settings.mangadexQuality };
+  const tab = await browser.tabs.get(tabId);
   await browser.scripting.executeScript({ target: { tabId }, files: ['/content-scripts/scanner.js'] });
   const [injection] = await browser.scripting.executeScript({
     target: { tabId },
@@ -32,8 +34,14 @@ async function scanTab(tabId: number, autoScroll = false, quality?: MangadexQual
   const reply = injection?.result as ScanReply | undefined;
   if (!reply) throw new Error('The page did not return a scan result');
   if ('error' in reply) throw new Error(reply.error);
-  await ensureRefererRules(reply.gallery);
-  return reply;
+  let result: ScanResult = reply;
+  // Private tabs stay out of storage.
+  if (!tab.incognito && tab.url) {
+    result = richerScan((await cachedScan(tabId, tab.url, options))?.result, reply);
+    void cacheScan(tabId, tab.url, options, result);
+  }
+  await ensureRefererRules(result.gallery);
+  return result;
 }
 
 async function startDownload(
@@ -82,6 +90,8 @@ export default defineBackground({
       browser.contextMenus.create({ id: MENU_IMAGE, title: 'Download image with mangashelf', contexts: ['image'] });
       browser.contextMenus.create({ id: MENU_PAGE, title: 'Download all pages with mangashelf', contexts: ['page'] });
     });
+
+    browser.tabs.onRemoved.addListener((tabId) => forgetScan(tabId));
 
     browser.windows.onRemoved.addListener(async () => {
       const open = await browser.windows.getAll();

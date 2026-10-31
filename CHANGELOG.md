@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.1] - 2026-10-31
+
+### Added
+- More folder template tokens: `{volume}`, `{number}` (chapter number only), `{lang}` and `{group}`. Pad with zeros like `{number:000}` so readers that sort by name keep chapters in order
+
+### Changed
+- The popup opens instantly on a page it already scanned, and MangaDex chapters aren't fetched again for 10 minutes
+- Pages found by **Scroll & rescan** stay in the list after the popup is closed or the page reloaded
+- **Scroll & rescan** stops once it is past the last page image, instead of scrolling for 30 seconds on pages that never end
+- Chrome: the background page that runs downloads closes when none are left, freeing its memory
+
 ## [0.3.0] - 2026-10-29
 
 ### Added

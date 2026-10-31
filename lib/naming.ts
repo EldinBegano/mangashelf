@@ -20,16 +20,29 @@ export function chapterLabel(g: Pick<Gallery, 'volume' | 'chapter' | 'title'>): 
   return head || g.title || '';
 }
 
+/**
+ * Fill a folder template. A token can be padded with zeros, e.g. `{number:000}`: leading
+ * digits are padded to that width ("7" → "007", "7.5" → "007.5"), so readers that sort by
+ * file name keep chapters in order.
+ */
 export function folderPath(baseFolder: string, template: string, g: Gallery): string {
   const tokens: Record<string, string> = {
     site: g.site,
     series: g.series,
     chapter: chapterLabel(g),
     title: g.title ?? '',
+    volume: g.volume ?? '',
+    number: g.chapter ?? '',
+    lang: g.language ?? '',
+    group: g.groups?.join(', ') ?? '',
+  };
+  const fill = (key: string, pad?: string) => {
+    const value = tokens[key] ?? '';
+    return pad ? value.replace(/^\d+/, (digits) => digits.padStart(pad.length, '0')) : value;
   };
   const segments = template
     .split('/')
-    .map((part) => part.replace(/\{(\w+)\}/g, (_, key: string) => tokens[key] ?? ''))
+    .map((part) => part.replace(/\{(\w+)(?::(0+))?\}/g, (_, key: string, pad?: string) => fill(key, pad)))
     .filter((part) => part.trim() !== '')
     .map(sanitizeSegment);
   const base = baseFolder.split('/').filter((p) => p.trim() !== '').map(sanitizeSegment);
