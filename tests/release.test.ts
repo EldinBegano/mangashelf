@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { isNewer } from '../lib/version';
 // @ts-expect-error plain .mjs release scripts have no type declarations
+import { amoMetadata, plainNotes, reviewerNotes } from '../scripts/amo-metadata.mjs';
+// @ts-expect-error plain .mjs release scripts have no type declarations
 import { releaseNotes } from '../scripts/release-notes.mjs';
 // @ts-expect-error plain .mjs release scripts have no type declarations
 import { ADDON_ID, updatesJson } from '../scripts/updates-json.mjs';
@@ -49,5 +51,27 @@ describe('updatesJson', () => {
         update_hash: `sha256:${createHash('sha256').update(xpi).digest('hex')}`,
       },
     ]);
+  });
+});
+
+describe('amoMetadata', () => {
+  it('turns changelog Markdown into plain text', () => {
+    expect(plainNotes('### Added\n- **Scroll & rescan** uses `{number:000}`, see [docs](https://x)')).toBe(
+      'Added:\n- Scroll & rescan uses {number:000}, see docs',
+    );
+  });
+
+  it('unwraps the quoted reviewer notes', () => {
+    const doc = '## Notes to reviewer\n\n> Build: run\n> `npm ci`.\n>\n> Permissions:\n> - `a`: one\n>   line\n> - `b`\n\n## Next\n> not this';
+    expect(reviewerNotes(doc)).toBe('Build: run `npm ci`.\n\nPermissions:\n- `a`: one line\n- `b`');
+  });
+
+  it('builds the version metadata from the real changelog and store notes', () => {
+    const { version } = JSON.parse(fixture('../../package.json')) as { version: string };
+    const meta = amoMetadata(version, fixture('../../CHANGELOG.md'), fixture('../../store/firefox-add-ons.md'));
+    expect(meta.version.release_notes['en-US']).not.toBe('');
+    expect(meta.version.approval_notes).toContain('declarativeNetRequest');
+    expect(meta.version.approval_notes).toContain(`mangashelf-${version}-amo.zip`);
+    expect(meta.version.compatibility).toEqual(['firefox']);
   });
 });

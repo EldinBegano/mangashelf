@@ -1,7 +1,7 @@
 ![mangashelf: save manga chapters as folders, ZIP or CBZ](.github/banner.svg)
 
 [![Latest release](https://img.shields.io/github/v/release/EldinBegano/mangashelf?color=d6336c&label=release)](https://github.com/EldinBegano/mangashelf/releases/latest)
-![Works in Firefox and Floorp](https://img.shields.io/badge/Firefox%20%7C%20Floorp-supported-d6336c?logo=firefoxbrowser&logoColor=white)
+[![Firefox Add-ons](https://img.shields.io/amo/v/mangashelf?color=d6336c&label=firefox%20add-ons&logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/firefox/addon/mangashelf/)
 ![Works in Chrome](https://img.shields.io/badge/Chrome-supported-d6336c?logo=googlechrome&logoColor=white)
 
 Browser extension that downloads manga chapters and image galleries as a folder of
@@ -14,19 +14,24 @@ numbered images, a ZIP, or a CBZ. Best used together with
 
 ## Install
 
-Download the latest version from the
-[Releases page](https://github.com/EldinBegano/mangashelf/releases/latest).
-
 **Firefox / Floorp / LibreWolf**
-1. Download `mangashelf-<version>-firefox.xpi`.
-2. Open `about:addons` → gear icon → **Install Add-on From File…** → pick the file → **Add**.
-3. Puzzle-piece menu → gear next to mangashelf → **Pin to Toolbar**.
 
-Updates install automatically. Regular Firefox only installs add-ons signed by Mozilla;
-Floorp and LibreWolf don't need that.
+Get it from [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/mangashelf/), then pin it from the puzzle-piece menu
+(gear next to mangashelf → **Pin to Toolbar**). Updates install automatically.
+
+Floorp and LibreWolf can also install the file from GitHub, which gets new versions as soon
+as they are released, before Mozilla's review:
+1. Download `mangashelf-<version>-firefox.xpi` from the
+   [Releases page](https://github.com/EldinBegano/mangashelf/releases/latest).
+2. Open `about:addons` → gear icon → **Install Add-on From File…** → pick the file → **Add**.
+
+That copy updates itself from GitHub. Regular Firefox only installs add-ons signed by
+Mozilla, so use Firefox Add-ons there.
 
 **Chrome / Chromium / Brave / Edge**
-1. Download `mangashelf-<version>-chrome.zip` and unzip it into a folder you keep.
+1. Download `mangashelf-<version>-chrome.zip` from the
+   [Releases page](https://github.com/EldinBegano/mangashelf/releases/latest) and unzip it
+   into a folder you keep.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick that folder.
 
 When a new version is out, the popup says so. Unzip the new version over the same

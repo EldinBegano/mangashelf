@@ -80,7 +80,8 @@ hasn't been tested there.
 >   Rules are session rules and never touch normal browsing.
 > - `downloads`: saves the images or the ZIP/CBZ archive.
 > - `contextMenus`: "Download image with mangashelf" and "Download all pages with mangashelf".
-> - `storage`: settings and the download list.
+> - `storage`: settings, the download list, and each tab's last scan so the popup opens
+>   instantly (session storage, cleared when the browser closes; never for private windows).
 > - `notifications` (optional, requested only when the user turns it on in the settings):
 >   tells the user a download finished.
 >
@@ -99,9 +100,28 @@ hasn't been tested there.
 5. Fill in the listing fields above, add the screenshot, paste the reviewer notes.
 6. Submit. Automatic checks run right away; a human review can take days to a few weeks.
 7. Once it's approved, add an "Available on Firefox Add-ons" link to the README and the
-   landing page.
+   landing page. *Done: listed at https://addons.mozilla.org/firefox/addon/mangashelf/.*
 
-**Later releases:** run `npm run zip:amo` and upload the new version in the Developer Hub
+## Later releases
+
+Pushing a version tag runs `.github/workflows/amo.yml`, which builds `npm run zip:amo` and
+uploads it with the sources zip as a new listed version (`web-ext sign --channel listed`).
+The version's release notes come from its CHANGELOG section, and the notes to reviewer from
+the quote above, so keep that quote current. The job doesn't wait for the review; the new
+version reaches users once Mozilla approves it.
+
+One-time setup:
+
+1. Developer Hub → **Tools** → **Manage API Keys**
+   (https://addons.mozilla.org/developers/addon/api/key/) → generate credentials.
+2. GitHub repo → **Settings** → **Secrets and variables** → **Actions** → add
+   `AMO_API_KEY` (the JWT issuer, `user:…`) and `AMO_API_SECRET` (the JWT secret).
+
+Without the secrets the job only prints a warning. To submit the version on `main` again
+(say, after a rejected review was fixed with a new version number), use **Actions** →
+**Firefox Add-ons** → **Run workflow**.
+
+By hand instead: run `npm run zip:amo` and upload the new version in the Developer Hub
 (**Manage Status & Versions** → **Upload a New Version**), again with the sources zip.
 
 **If the review objects to site support:** reviewers may object to adapters for sites that

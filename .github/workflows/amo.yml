@@ -1,0 +1,75 @@
+name: Firefox Add-ons
+
+# Submits the version in package.json to addons.mozilla.org as a new listed version.
+# Runs next to release.yml on version tags. To submit by hand (e.g. after a failed
+# review was fixed), use Actions → Firefox Add-ons → Run workflow.
+# Needs the repository secrets AMO_API_KEY (JWT issuer) and AMO_API_SECRET (JWT secret).
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check store credentials
+        id: amo
+        env:
+          HAS_KEYS: ${{ secrets.AMO_API_KEY != '' && secrets.AMO_API_SECRET != '' }}
+        run: |
+          if [ "$HAS_KEYS" != true ]; then
+            echo "::warning::AMO_API_KEY and AMO_API_SECRET aren't set, so nothing was sent to addons.mozilla.org."
+          fi
+          echo "enabled=$HAS_KEYS" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.amo.outputs.enabled == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.amo.outputs.enabled == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check tag matches package.json
+        if: steps.amo.outputs.enabled == 'true'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $VERSION" >&2
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - run: npm ci
+        if: steps.amo.outputs.enabled == 'true'
+      - run: npm test
+        if: steps.amo.outputs.enabled == 'true'
+      - run: npm run check
+        if: steps.amo.outputs.enabled == 'true'
+
+      - name: Build store version
+        if: steps.amo.outputs.enabled == 'true'
+        run: |
+          npm run zip:amo
+          node scripts/amo-metadata.mjs "$VERSION" > .output/amo-metadata.json
+
+      # The only step that sees the API secrets.
+      - name: Submit to addons.mozilla.org
+        if: steps.amo.outputs.enabled == 'true'
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: >-
+          npx web-ext sign
+          --channel listed
+          --source-dir .output/firefox-mv2
+          --upload-source-code ".output/mangashelf-$VERSION-amo-sources.zip"
+          --amo-metadata .output/amo-metadata.json
+          --approval-timeout 0
+          --artifacts-dir .output/web-ext-artifacts
