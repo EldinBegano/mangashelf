@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0] - 2026-11-21
+
+### Added
+- Download history: finished chapters are remembered (never ones from private windows). The popup says when the chapter on screen was already downloaded, and the new history page (🕘 in the popup) lists everything by series, with search, show in folder, remove, and JSON export/import
+
+### Changed
+- ZIP and CBZ downloads are built page by page as images arrive, using about a third of the memory they did. Firefox no longer freezes the popup while a large chapter is being packed
+
 ## [0.3.1] - 2026-10-31
 
 ### Added
