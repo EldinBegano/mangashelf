@@ -3,6 +3,7 @@
   import { SvelteSet } from 'svelte/reactivity';
   import { browser } from 'wxt/browser';
   import type { ScanResult } from '@/lib/extractors';
+  import { chapterKey, getEntry, type HistoryEntry } from '@/lib/history';
   import { canRetry } from '@/lib/job-list';
   import { send, type Message } from '@/lib/messages';
   import { chapterLabel } from '@/lib/naming';
@@ -13,7 +14,7 @@
 
   let tabId = $state<number>();
   /** Private window: only private jobs are shown, and vice versa. */
-  let incognito = false;
+  let incognito = $state(false);
   let scan = $state<ScanResult>();
   let error = $state('');
   let loading = $state(true);
@@ -24,6 +25,8 @@
   let minSize = $state(300);
   let jobs = $state<JobProgress[]>([]);
   let update = $state<UpdateInfo>();
+  /** This chapter's entry in the download history. */
+  let downloaded = $state<HistoryEntry>();
   /** Loaded thumbnail sizes by page URL; a URL's image is the same in every scan. */
   let measured = $state<Record<string, { w: number; h: number }>>({});
   /** Index into thumbSources() by page URL; bumped when a thumbnail fails to load. */
@@ -58,6 +61,15 @@
     selected.clear();
     for (const i of picks ?? result.gallery.preselect ?? result.gallery.pages.keys()) selected.add(i);
     if (!picks) touched = false;
+    void lookUpHistory(result.gallery);
+  }
+
+  /** Private windows don't show the history, like they don't show normal-window jobs. */
+  async function lookUpHistory(g: ScanResult['gallery']) {
+    if (incognito) return;
+    const key = chapterKey(g);
+    const entry = await getEntry(key).catch(() => undefined);
+    if (gallery && chapterKey(gallery) === key) downloaded = entry;
   }
 
   /** Scan the tab. A refresh runs behind the scan already shown and keeps it if it fails. */
@@ -155,6 +167,8 @@
       const i = jobs.findIndex((j) => j.id === msg.progress.id);
       if (i >= 0) jobs[i] = msg.progress;
       else jobs = [msg.progress, ...jobs];
+      // The background writes the history entry as the job ends.
+      if (msg.progress.status === 'done' && gallery) setTimeout(() => gallery && lookUpHistory(gallery), 300);
     };
     browser.runtime.onMessage.addListener(onMessage);
 
@@ -200,10 +214,21 @@
         <span>{gallery.pages.length} images</span>
         {#if refreshing}<span class="refreshing"> · updating…</span>{/if}
       </div>
+      {#if downloaded}
+        <div class="downloaded" title={downloaded.path}>
+          Downloaded {new Date(downloaded.downloadedAt).toLocaleDateString()} as
+          {downloaded.format === 'folder' ? 'a folder' : downloaded.format.toUpperCase()}{#if downloaded.failed.length}, {downloaded.failed.length} page{downloaded.failed.length === 1 ? '' : 's'} failed{/if}
+        </div>
+      {/if}
     {:else}
       <h1>mangashelf</h1>
     {/if}
-    <button class="link" onclick={() => browser.runtime.openOptionsPage()} title="Settings">⚙</button>
+    <div class="links">
+      {#if !incognito}
+        <button class="link" onclick={() => browser.tabs.create({ url: browser.runtime.getURL('/downloaded.html') })} title="Download history">🕘</button>
+      {/if}
+      <button class="link" onclick={() => browser.runtime.openOptionsPage()} title="Settings">⚙</button>
+    </div>
   </header>
 
   {#if update}
@@ -308,7 +333,7 @@
   }
   header {
     position: relative;
-    padding-right: 28px;
+    padding-right: 56px;
   }
   .site {
     font-size: 11px;
@@ -329,10 +354,17 @@
   .count {
     color: var(--muted);
   }
-  .link {
+  .links {
     position: absolute;
     top: 0;
     right: 0;
+    display: flex;
+  }
+  .downloaded {
+    color: var(--ok);
+  }
+  .link {
+    padding: 2px 4px;
     border: none;
     background: none;
     font-size: 16px;

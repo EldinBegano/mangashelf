@@ -96,6 +96,8 @@ export interface JobSpec {
   incognito: boolean;
   /** Overwrite files of the same name instead of adding " (1)" (a retried archive replaces the partial one). */
   replace?: boolean;
+  /** Leave it out of the download history (single images from the context menu). */
+  noHistory?: boolean;
 }
 
 export type JobStatus = 'running' | 'packing' | 'done' | 'error' | 'cancelled';

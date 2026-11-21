@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobProgress, JobSpec } from '../lib/types';
 
@@ -92,5 +93,33 @@ describe('offscreen document', () => {
     await host.startJob(b);
     expect(open).toBe(true);
     expect(offscreen.createDocument).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('download history', () => {
+  // fake-indexeddb schedules its work on real timers.
+  beforeEach(async () => {
+    vi.useRealTimers();
+    await (await import('../lib/history')).clearHistory();
+  });
+  const history = async () => (await import('../lib/history')).listHistory();
+
+  it('records a job once it ends', async () => {
+    const s = spec();
+    await host.startJob(s);
+    await host.recordProgress(finished(s));
+    await vi.waitFor(async () => expect(await history()).toHaveLength(1));
+    expect((await history())[0]).toMatchObject({ key: 'https://example.com', jobId: s.id, format: 'folder' });
+  });
+
+  it('leaves out private jobs and single images from the context menu', async () => {
+    const priv = { ...spec(), incognito: true };
+    const image = { ...spec(), noHistory: true };
+    for (const s of [priv, image]) {
+      await host.startJob(s);
+      await host.recordProgress(finished(s));
+    }
+    await new Promise((r) => setTimeout(r, 50));
+    expect(await history()).toEqual([]);
   });
 });

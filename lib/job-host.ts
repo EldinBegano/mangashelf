@@ -1,5 +1,6 @@
 import { browser, type Browser } from 'wxt/browser';
 import { downloadAndWait } from './downloads';
+import { recordJob } from './history';
 import { canRetry, isActive as active, JobList, retrySpec } from './job-list';
 import { abortJob, initialProgress, runJob } from './job-runner';
 import { broadcast, send } from './messages';
@@ -67,6 +68,8 @@ function updateBadge(): void {
 
 function ended(p: JobProgress): void {
   if (p.incognito || p.status === 'cancelled') return;
+  const spec = jobs.spec(p.id);
+  if (spec && !spec.noHistory) recordJob(spec, p).catch((err) => console.warn('[mangashelf] history not saved', err));
   if (p.status === 'error' || p.failed.length) needsAttention = true;
   notifyEnded(p).catch((err) => console.warn('[mangashelf] notification failed', err));
 }

@@ -50,6 +50,7 @@ async function startDownload(
   format: SaveFormat,
   incognito: boolean,
   names?: string[],
+  noHistory?: boolean,
 ) {
   if (pages.length === 0) throw new Error('No pages selected');
   const settings = await getSettings();
@@ -63,6 +64,7 @@ async function startDownload(
     names: names ?? pages.map((i) => allNames[i]!),
     concurrency: settings.concurrency,
     incognito,
+    noHistory,
   };
   await ensureRefererRules(gallery);
   await startJob(spec);
@@ -111,7 +113,7 @@ export default defineBackground({
             referer: pageUrl,
             pages: [{ url: info.srcUrl }],
           };
-          await startDownload(gallery, [0], 'folder', incognito, [stemFromUrl(info.srcUrl)]);
+          await startDownload(gallery, [0], 'folder', incognito, [stemFromUrl(info.srcUrl)], true);
         } else if (info.menuItemId === MENU_PAGE && tab?.id !== undefined) {
           const { gallery } = await scanTab(tab.id);
           const settings = await getSettings();
