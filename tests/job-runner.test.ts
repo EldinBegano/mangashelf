@@ -1,6 +1,6 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { comicInfo } from '../lib/archive';
+import { ArchiveWriter, comicInfo } from '../lib/archive';
 import { abortJob, runJob } from '../lib/job-runner';
 import type { Gallery, JobProgress, JobSpec } from '../lib/types';
 
@@ -96,6 +96,26 @@ describe('runJob', () => {
     expect(info).toContain('<PageCount>3</PageCount>');
     expect(info).toContain('<Tags>action, drama</Tags>');
     expect(info).not.toContain('<Manga>');
+  });
+
+  it('keeps archive pages in order when later pages finish first, skipping failed ones', async () => {
+    const delays: Record<string, number> = { '1.png': 30, '2.png': 0, '3.png': 10 };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('dead.example.com') || url.includes('/missing/')) return new Response('nope', { status: 404 });
+        await new Promise((r) => setTimeout(r, delays[url.split('/').pop()!]));
+        return new Response(new Uint8Array([...PNG, Number(url.at(-5))]), { headers: { 'content-type': 'image/png' } });
+      }),
+    );
+    const h = hooks();
+    const g = { ...gallery, pages: [...gallery.pages, { url: 'https://cdn.example.com/missing/4.png' }] };
+    const result = await runJob(spec({ gallery: g, format: 'cbz', pages: [3, 0, 1, 2], names: ['000', '001', '002', '003'], concurrency: 4 }), h);
+    expect(result).toMatchObject({ status: 'done', done: 3, failed: [3] });
+    const files = unzipSync(new Uint8Array(await h.saved[0]!.blob.arrayBuffer()));
+    expect(Object.keys(files)).toEqual(['001.png', '002.png', '003.png', 'ComicInfo.xml']);
+    expect(files['003.png']!.at(-1)).toBe(3);
+    expect(strFromU8(files['ComicInfo.xml']!)).toContain('<PageCount>3</PageCount>');
   });
 
   it('builds a plain ZIP without ComicInfo.xml', async () => {
@@ -246,5 +266,39 @@ describe('comicInfo', () => {
     expect(xml).not.toContain('<Number>');
     expect(xml).not.toContain('<Tags>');
     expect(xml).toContain('<Web>https://example.com/read/2</Web>');
+  });
+});
+
+describe('ArchiveWriter', () => {
+  it('writes sizes and CRC into the local headers, without data descriptors', async () => {
+    const zip = new ArchiveWriter(new Date(2026, 10, 21, 13, 45, 30));
+    zip.add('a.txt', new TextEncoder().encode('hello'));
+    const bytes = new Uint8Array(await zip.finish('application/zip').arrayBuffer());
+    const v = new DataView(bytes.buffer);
+    expect(v.getUint32(0, true)).toBe(0x04034b50);
+    expect(v.getUint16(6, true) & 0x8).toBe(0); // no data descriptor
+    expect(v.getUint16(8, true)).toBe(0); // stored
+    expect(v.getUint32(14, true)).toBe(0x3610a686); // crc32("hello")
+    expect(v.getUint32(18, true)).toBe(5);
+    expect(v.getUint32(22, true)).toBe(5);
+    expect(v.getUint16(12, true)).toBe(((2026 - 1980) << 9) | (11 << 5) | 21);
+    expect(strFromU8(unzipSync(bytes)['a.txt']!)).toBe('hello');
+  });
+
+  it('flags and keeps non-ASCII names', async () => {
+    const zip = new ArchiveWriter();
+    zip.add('第1話.png', PNG);
+    zip.add('plain.png', PNG);
+    const bytes = new Uint8Array(await zip.finish('application/zip').arrayBuffer());
+    expect(new DataView(bytes.buffer).getUint16(6, true) & 0x800).toBe(0x800);
+    const files = unzipSync(bytes);
+    expect(Object.keys(files)).toEqual(['第1話.png', 'plain.png']);
+    expect(files['第1話.png']).toEqual(PNG);
+  });
+
+  it('writes a valid empty archive', async () => {
+    const bytes = new Uint8Array(await new ArchiveWriter().finish('application/zip').arrayBuffer());
+    expect(bytes.length).toBe(22);
+    expect(unzipSync(bytes)).toEqual({});
   });
 });

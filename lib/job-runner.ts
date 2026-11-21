@@ -1,4 +1,4 @@
-import { buildArchive, type ArchiveEntry } from './archive';
+import { ArchiveWriter, comicInfo } from './archive';
 import { fetchJson, getExtractor } from './extractors';
 import { fetchImage } from './fetch-image';
 import { chapterLabel } from './naming';
@@ -66,7 +66,20 @@ export async function runJob(spec: JobSpec, hooks: JobHooks): Promise<JobProgres
     return refreshed;
   };
 
-  const entries: ArchiveEntry[] = [];
+  // Archive pages go in slot order; ones that finish early wait here for the pages before them.
+  const archive = spec.format === 'folder' ? undefined : new ArchiveWriter();
+  const waiting = new Map<number, { name: string; data: Uint8Array<ArrayBuffer> } | null>();
+  let nextSlot = 0;
+  const settle = (slot: number, entry: { name: string; data: Uint8Array<ArrayBuffer> } | null) => {
+    if (!archive) return;
+    waiting.set(slot, entry);
+    for (; waiting.has(nextSlot); nextSlot++) {
+      const ready = waiting.get(nextSlot);
+      waiting.delete(nextSlot);
+      if (ready) archive.add(ready.name, ready.data);
+    }
+  };
+
   const download = async (slot: number) => {
     const index = spec.pages[slot]!;
     const urlsOf = (p: GalleryPage) => [p.url, ...(p.fallbacks ?? [])];
@@ -83,17 +96,18 @@ export async function runJob(spec: JobSpec, hooks: JobHooks): Promise<JobProgres
     const name = `${spec.names[slot]}.${image.ext}`;
     if (spec.format === 'folder') {
       await save(new Blob([image.data], { type: image.type }), `${spec.folder}/${name}`);
-    } else {
-      entries[slot] = { name, data: image.data };
+      return null;
     }
+    return { name, data: image.data };
   };
 
   let next = 0;
   const worker = async () => {
     while (next < spec.pages.length && !signal.aborted) {
       const slot = next++;
+      let entry = null;
       try {
-        await download(slot);
+        entry = await download(slot);
         progress.done++;
       } catch (err) {
         if (signal.aborted) break;
@@ -101,6 +115,7 @@ export async function runJob(spec: JobSpec, hooks: JobHooks): Promise<JobProgres
         console.warn(`[mangashelf] page ${index + 1} failed`, err);
         progress.failed.push(index);
       }
+      settle(slot, entry);
       report();
     }
   };
@@ -108,15 +123,15 @@ export async function runJob(spec: JobSpec, hooks: JobHooks): Promise<JobProgres
   try {
     await Promise.all(Array.from({ length: Math.max(1, spec.concurrency) }, worker));
     signal.throwIfAborted();
-    if (spec.format !== 'folder') {
-      const ok = entries.filter(Boolean);
-      if (ok.length === 0) throw new Error('No pages downloaded');
+    if (archive) {
+      if (archive.count === 0) throw new Error('No pages downloaded');
       progress.status = 'packing';
       report();
-      const archive = buildArchive(ok, spec.format === 'cbz' ? gallery : undefined);
-      signal.throwIfAborted();
+      if (spec.format === 'cbz') {
+        archive.add('ComicInfo.xml', new TextEncoder().encode(comicInfo(gallery, archive.count)));
+      }
       const type = spec.format === 'cbz' ? 'application/vnd.comicbook+zip' : 'application/zip';
-      await save(new Blob([archive as Uint8Array<ArrayBuffer>], { type }), `${spec.folder}.${spec.format}`);
+      await save(archive.finish(type), `${spec.folder}.${spec.format}`);
     }
     progress.status = progress.done === 0 ? 'error' : 'done';
     if (progress.done === 0) progress.error = 'No pages downloaded';
